@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Reel · Tienda sin confianza</title>
+<style>
+@font-face{font-family:IDX;src:url(fonts/InterDisplay-ExtraBold.otf);font-weight:800}
+@font-face{font-family:IDX;src:url(fonts/InterDisplay-SemiBold.otf);font-weight:600}
+@font-face{font-family:IDX;src:url(fonts/InterDisplay-Medium.otf);font-weight:500}
+:root{--bg:#07090A;--fg:#F4F6F2;--ac:#BFEF9F;--red:#FF5A4E;--mut:#8C9692;--card:#101517;--line:#283033}
+html,body{margin:0;background:var(--bg)}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--bg);font-family:IDX;color:var(--fg)}
+#cam{position:absolute;inset:0}
+.abs{position:absolute;left:0;top:0;will-change:transform,opacity}
+.t{font-weight:800;text-transform:uppercase;letter-spacing:-0.02em;line-height:.98;text-align:center;width:1080px}
+.mut{color:var(--mut)}
+.red{color:var(--red)}
+.ac{color:var(--ac)}
+.pill{font-weight:600;font-size:30px;padding:8px 22px;border:2px solid #3A4448;border-radius:40px;color:var(--mut);letter-spacing:.02em}
+.bub{font-weight:800;text-transform:uppercase;font-size:50px;letter-spacing:-0.01em;color:var(--red);background:#140D0D;border:4px solid var(--red);
+  border-radius:26px;padding:16px 30px;white-space:nowrap;box-shadow:0 14px 40px rgba(0,0,0,.6)}
+.bub.tail::after{content:"";position:absolute;bottom:-22px;margin-left:-16px;left:var(--tl,50%);width:28px;height:28px;background:#140D0D;
+  border-right:4px solid var(--red);border-bottom:4px solid var(--red);transform:rotate(45deg)}
+.card{width:900px;height:200px;border-radius:30px;background:var(--card);border:3px solid var(--line);box-sizing:border-box}
+.card .chk{position:absolute;left:40px;top:45px;width:110px;height:110px;border-radius:50%;border:5px solid #3A4448;box-sizing:border-box}
+.card .chk svg{position:absolute;left:-5px;top:-5px}
+.card .ttl{position:absolute;left:186px;top:42px;font-weight:800;font-size:64px;text-transform:uppercase;letter-spacing:-0.02em;white-space:nowrap}
+.card .sub{position:absolute;left:188px;top:118px;font-weight:500;font-size:36px;color:var(--mut);white-space:nowrap}
+#comment{width:860px;height:160px;border-radius:80px;background:#11171A;border:3px solid #2E373B;box-sizing:border-box}
+#proofFrame{width:560px;height:1000px;border-radius:56px;border:10px solid #2E373B;background:#101517;overflow:hidden;box-sizing:border-box}
+#proofFrame img{width:100%;height:100%;object-fit:cover;display:block}
+</style>
+</head>
+<body>
+<div id="stage"><div id="cam"></div></div>
+<script>
+'use strict';
+// ---------------------------------------------------------------------------
+// Línea de tiempo determinista: todo el estado visual depende solo de t (segundos).
+// render(t) dibuja el fotograma; CUES lista los efectos de sonido (tiempo, tipo).
+// ---------------------------------------------------------------------------
+const Q = new URLSearchParams(location.search);
+const HAS_PROOF = Q.get('proof') === '1';
+const DURATION = 45;
+
+// Marcas de tiempo de cada escena (ajustables al audio de voz).
+const T = {
+  hookEnd: 4,
+  storeIn: 4, doorOpen: 5.0, walkIn: 5.4, walkInEnd: 7.2, look: 7.2,
+  bPrecios: 8.2, bCartel: 9.8, bNadie: 11.6, comprasAhi: 13.4,
+  shrug: 15.0, walkOut: 16.5, storeOut: 18,
+  web: 18, rResenas: 19.6, rGarantia: 20.9, rLlegara: 22.1, masGente: 22.5,
+  fix: 24, card1: 26.2, card2: 28.2, card3: 30.0,
+  confianza: HAS_PROOF ? 32.4 : 33.4,
+  proof: 34,
+  cta: 37, typeStart: 38.6, send: 40.1, lista: 40.6, handle: 41.6,
+};
+
+// ---------- utilidades ----------
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const P = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = k => 1 - Math.pow(1 - k, 3);
+const eOut5 = k => 1 - Math.pow(1 - k, 5);
+const eIO = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const eBack = k => { const c = 1.6, c3 = c + 1; return 1 + c3 * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const fin = (t, a, d = .35) => eOut(P(t, a, a + d));
+const fout = (t, b, d = .3) => 1 - eIO(P(t, b - d, b));
+const win = (t, a, b, di = .35, dout = .3) => Math.min(fin(t, a, di), fout(t, b, dout));
+// golpe seco: entra grande y se clava
+const slamS = (t, a) => t < a ? 1.35 : lerp(1.35, 1, eOut5(P(t, a, a + .2)));
+const slamO = (t, a) => P(t, a, a + .06);
+const popS = (t, a, d = .38) => t < a ? 0 : (t > a + d ? 1 : Math.max(0, eBack(P(t, a, a + d))));
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+const stage = document.getElementById('cam');
+function el(html, cls = '', css = {}) {
+  const d = document.createElement('div');
+  d.className = 'abs ' + cls; d.innerHTML = html;
+  for (const k in css) d.style.setProperty(k.startsWith('--') ? k : k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), css[k]);
+  stage.appendChild(d); return d;
+}
+function S(e, o = 1, x = 0, y = 0, s = 1, r = 0) {
+  e.style.opacity = o.toFixed(3);
+  e.style.display = o <= 0.001 ? 'none' : '';
+  e.style.transform = `translate(${x.toFixed(2)}px,${y.toFixed(2)}px) scale(${s.toFixed(4)}) rotate(${r.toFixed(2)}deg)`;
+}
+const textAt = (html, top, size, cls = '', extra = {}) =>
+  el(html, 't ' + cls, Object.assign({ top: top + 'px', fontSize: size + 'px' }, extra));
+function centered(html, cls, cx, cy, css = {}) { // elemento centrado en (cx, cy)
+  const d = el(html, cls, css);
+  d.style.left = cx + 'px'; d.style.top = cy + 'px';
+  d.style.translate = '-50% -50%';
+  return d;
+}
+
+// ---------- sonido: lista de efectos ----------
+const CUES = [];
+const cue = (t, type, gain = 1) => CUES.push({ t: +t.toFixed(3), type, gain });
+
+// ===========================================================================
+// ESCENA 1 · Gancho (0-4 s)
+// ===========================================================================
+const s1 = {
+  label: textAt('VISITAS', 520, 64, 'mut'),
+  num: textAt('0', 595, 330),
+  ventas: textAt('0 VENTAS', 985, 170, 'red'),
+  falta: textAt('¿Y piensas que te falta gente?', 1290, 54, '', { textTransform: 'none', fontWeight: 600, letterSpacing: '-0.01em' }),
+  ej: centered('Ejemplo', 'pill', 540, 1420),
+};
+for (let i = 1; i <= 10; i++) cue(0.3 + 1.5 * (1 - Math.cbrt(1 - i / 10)), 'tick', .5);
+cue(1.8, 'pop', .8); cue(2.0, 'thud', 1); cue(2.8, 'pop', .5); cue(T.hookEnd - .1, 'swoosh', .8);
+
+function renderS1(t) {
+  const out = fout(t, T.hookEnd + .2, .4), up = -80 * eIO(P(t, T.hookEnd - .2, T.hookEnd + .2));
+  const n = Math.round(100 * eOut(P(t, .3, 1.8)));
+  s1.num.textContent = n;
+  const bump = 1 + .08 * Math.sin(Math.PI * P(t, 1.8, 2.0));
+  S(s1.label, fin(t, 0, .3) * out, 0, up + 30 * (1 - fin(t, 0, .4)));
+  S(s1.num, fin(t, 0, .25) * out, 0, up, bump);
+  S(s1.ventas, slamO(t, 2.0) * out, 0, up, slamS(t, 2.0));
+  S(s1.falta, fin(t, 2.8, .4) * out, 0, up + 24 * (1 - fin(t, 2.8, .4)));
+  S(s1.ej, fin(t, .2, .4) * out, 0, up);
+}
+
+// ===========================================================================
+// ESCENA 2 · La tienda física (4-18 s) y ESCENA 3 · la web (18-24 s): SVG
+// ===========================================================================
+const svgNS = 'http://www.w3.org/2000/svg';
+const svgWrap = el('', '', { width: '1080px', height: '1920px' });
+svgWrap.innerHTML = `
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="${svgNS}">
+ <defs>
+  <clipPath id="doorClip"><rect x="140" y="1040" width="190" height="400"/></clipPath>
+ </defs>
+ <g id="store">
+  <rect x="230" y="560" width="620" height="105" rx="14" fill="#0D1113" stroke="#46525A" stroke-width="4" stroke-dasharray="16 10"/>
+  <line x1="320" y1="665" x2="320" y2="690" stroke="#46525A" stroke-width="5"/>
+  <line x1="760" y1="665" x2="760" y2="690" stroke="#46525A" stroke-width="5"/>
+  <rect x="110" y="750" width="860" height="690" fill="#0D1113" stroke="#2E373B" stroke-width="4"/>
+  <g id="awning"></g>
+  <rect x="140" y="1040" width="190" height="400" fill="#030405"/>
+  <rect x="140" y="1040" width="190" height="400" fill="none" stroke="#3A4448" stroke-width="5"/>
+  <g id="shelves"></g>
+  <rect x="410" y="1280" width="220" height="16" rx="4" fill="#3A4448"/>
+  <g id="keeper">
+   <rect x="476" y="1222" width="88" height="90" rx="32" fill="#5E696E"/>
+   <circle cx="520" cy="1180" r="34" fill="#5E696E"/>
+   <circle id="kEyeL" cx="508" cy="1176" r="4.5" fill="#07090A"/>
+   <circle id="kEyeR" cx="532" cy="1176" r="4.5" fill="#07090A"/>
+   <line x1="508" y1="1196" x2="532" y2="1196" stroke="#07090A" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <rect x="420" y="1296" width="200" height="144" fill="#161C1F" stroke="#2E373B" stroke-width="4"/>
+  <g id="door" clip-path="url(#doorClip)">
+   <rect id="doorPanel" x="140" y="1040" width="190" height="400" fill="#1C2427" stroke="#3A4448" stroke-width="4"/>
+   <circle id="doorKnob" cx="305" cy="1250" r="9" fill="#5E696E"/>
+  </g>
+  <line x1="60" y1="1440" x2="1020" y2="1440" stroke="#46525A" stroke-width="6" stroke-linecap="round"/>
+ </g>
+ <g id="web">
+  <rect x="90" y="600" width="900" height="820" rx="30" fill="#0E1315" stroke="#3A4448" stroke-width="4"/>
+  <path d="M90 680 V630 a30 30 0 0 1 30 -30 H960 a30 30 0 0 1 30 30 V680 Z" fill="#161C1F"/>
+  <circle cx="140" cy="640" r="10" fill="#3A4448"/><circle cx="175" cy="640" r="10" fill="#3A4448"/><circle cx="210" cy="640" r="10" fill="#3A4448"/>
+  <rect x="250" y="618" width="700" height="44" rx="22" fill="#0A0E10"/>
+  <text x="280" y="649" font-family="IDX" font-weight="500" font-size="25" fill="#7B8682">tutienda.com/producto</text>
+  <rect x="130" y="720" width="390" height="360" rx="20" fill="#1A2124"/>
+  <g stroke="#46525A" stroke-width="7" stroke-linejoin="round" fill="none">
+   <path d="M325 830 L400 868 L400 958 L325 996 L250 958 L250 868 Z"/><path d="M250 868 L325 906 L400 868 M325 906 V996"/>
+  </g>
+  <rect x="560" y="728" width="360" height="28" rx="8" fill="#2E373B"/>
+  <rect x="560" y="772" width="250" height="28" rx="8" fill="#2E373B"/>
+  <text x="560" y="880" font-family="IDX" font-weight="800" font-size="62" fill="#F4F6F2">29,99 €</text>
+  <g id="stars"></g>
+  <text x="790" y="944" font-family="IDX" font-weight="600" font-size="30" fill="#6B7579">(0)</text>
+  <rect x="560" y="990" width="390" height="84" rx="18" fill="#2E373B"/>
+  <text x="755" y="1043" text-anchor="middle" font-family="IDX" font-weight="800" font-size="27" fill="#9AA4A0">AÑADIR AL CARRITO</text>
+  <rect x="130" y="1120" width="820" height="2" fill="#232B2E"/>
+  <text x="130" y="1180" font-family="IDX" font-weight="800" font-size="30" fill="#9AA4A0">RESEÑAS</text>
+  <rect x="130" y="1205" width="820" height="80" rx="16" fill="none" stroke="#2E373B" stroke-width="3" stroke-dasharray="12 9"/>
+  <text x="540" y="1255" text-anchor="middle" font-family="IDX" font-weight="500" font-size="28" fill="#6B7579">Todavía no hay reseñas</text>
+  <text x="130" y="1345" font-family="IDX" font-weight="800" font-size="30" fill="#9AA4A0">ENVÍO</text>
+  <rect x="260" y="1323" width="160" height="26" rx="8" fill="#232B2E"/>
+  <text x="130" y="1395" font-family="IDX" font-weight="800" font-size="30" fill="#9AA4A0">DEVOLUCIONES</text>
+  <rect x="380" y="1373" width="120" height="26" rx="8" fill="#232B2E"/>
+ </g>
+ <g id="dots"></g>
+ <g id="cust">
+  <g id="custInner">
+   <line id="legL" stroke="#F4F6F2" stroke-width="18" stroke-linecap="round"/>
+   <line id="legR" stroke="#F4F6F2" stroke-width="18" stroke-linecap="round"/>
+   <polyline id="armL" fill="none" stroke="#F4F6F2" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+   <polyline id="armR" fill="none" stroke="#F4F6F2" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+   <rect id="body" x="-36" y="1250" width="72" height="112" rx="32" fill="#F4F6F2"/>
+   <g id="head">
+    <circle cx="0" cy="1204" r="36" fill="#F4F6F2"/>
+    <circle id="eyeL" cx="-12" cy="1200" r="5" fill="#07090A"/>
+    <circle id="eyeR" cx="12" cy="1200" r="5" fill="#07090A"/>
+   </g>
+  </g>
+ </g>
+</svg>`;
+const $ = id => document.getElementById(id);
+const SV = (n, a) => { const e = document.createElementNS(svgNS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+// toldo a rayas
+for (let i = 0; i < 10; i++) {
+  $('awning').appendChild(SV('rect', { x: 110 + i * 86, y: 690, width: 86, height: 60, fill: i % 2 ? '#1B2225' : '#2B3438' }));
+  $('awning').appendChild(SV('path', { d: `M${110 + i * 86} 750 a43 22 0 0 0 86 0 Z`, fill: i % 2 ? '#1B2225' : '#2B3438' }));
+}
+// estanterías con productos y huecos de precio vacíos
+const tagEls = [];
+[930, 1100, 1270].forEach((y, r) => {
+  const sh = $('shelves');
+  let x = 672;
+  const greys = ['#39434A', '#4C575D', '#5E6A70', '#434E54'];
+  for (let i = 0; i < 4; i++) {
+    const w = 52 + Math.round(hash(r * 10 + i) * 18), h = 60 + Math.round(hash(r * 7 + i * 3) * 50);
+    sh.appendChild(SV('rect', { x, y: y - h, width: w, height: h, rx: 6, fill: greys[(i + r) % 4] }));
+    const tag = SV('rect', { x: x + w / 2 - 20, y: y + 16, width: 40, height: 24, rx: 4, fill: 'none', stroke: '#46525A', 'stroke-width': 3, 'stroke-dasharray': '6 5' });
+    sh.appendChild(tag); tagEls.push(tag);
+    x += w + 14;
+  }
+  sh.appendChild(SV('rect', { x: 655, y, width: 290, height: 14, rx: 4, fill: '#3A4448' }));
+});
+// estrellas vacías
+for (let i = 0; i < 5; i++) {
+  const cx = 578 + i * 44, cy = 932, R = 18, r = 7.5; let d = '';
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r : R;
+    d += (k ? 'L' : 'M') + (cx + rr * Math.cos(a)).toFixed(1) + ' ' + (cy + rr * Math.sin(a)).toFixed(1);
+  }
+  $('stars').appendChild(SV('path', { d: d + 'Z', fill: 'none', stroke: '#6B7579', 'stroke-width': 3, 'stroke-linejoin': 'round' }));
+}
+// visitantes (puntos) que entran en la web y rebotan
+const DOTS = [];
+{
+  let ts = T.web + 1.0, i = 0;
+  while (ts < T.fix + .2) {
+    const e = SV('circle', { r: 19, fill: '#F4F6F2' }); $('dots').appendChild(e);
+    DOTS.push({ e, t0: ts, y: 760 + hash(i + 3) * 600, depth: 150 + hash(i + 9) * 170 });
+    ts += ts < T.masGente ? .34 : .14; i++;
+  }
+}
+
+const s2 = {
+  title1: textAt('Imagínate una<br>tienda de verdad', 300, 84),
+  title2: textAt('¿Tú compras<br><span class="red">ahí?</span>', 286, 120),
+  precios: centered('Sin precios', 'bub tail', 800, 790),
+  cartel: centered('Sin cartel', 'bub', 540, 612, { transformOrigin: 'center' }),
+  nadie: centered('Nadie atiende', 'bub tail', 700, 1050, { '--tl': '14%' }),
+  q: centered('?', 't', 380, 1090, { width: 'auto', fontSize: '150px', color: 'var(--fg)' }),
+};
+const s3 = {
+  title1: textAt('Así entra a tu<br>tienda online', 300, 84),
+  title2: textAt('Y tú, metiendo<br><span class="red">más gente</span>', 300, 84),
+  resenas: centered('0 reseñas', 'bub', 790, 936),
+  garantia: centered('Sin garantía', 'bub', 755, 1040),
+  llegara: centered('¿Me llegará?', 'bub', 560, 1290),
+  ventas: centered('Ventas: 0', 'bub', 850, 1440, { fontSize: '40px', padding: '10px 24px' }),
+};
+[[T.storeIn - .05, 'swoosh', .6], [T.doorOpen, 'pop', .35], [T.bPrecios, 'pop', .8], [T.bCartel, 'pop', .8], [T.bNadie, 'pop', .8],
+ [T.comprasAhi, 'thud', 1], [T.comprasAhi - .2, 'pop', .6], [T.shrug, 'swoosh', .35], [T.walkOut - .2, 'pop', .35],
+ [T.web - .05, 'swoosh', .8], [T.rResenas, 'pop', .8], [T.rGarantia, 'pop', .8], [T.rLlegara, 'pop', .8], [T.masGente, 'thud', .6], [T.masGente + .4, 'pop', .6]]
+  .forEach(c => cue(...c));
+DOTS.forEach((d, i) => { if (i % 3 === 0) cue(d.t0 + .45, 'blip', .25); });
+
+// pose del cliente
+function setCustomer(t) {
+  let x, moving = 0, face = 1;
+  if (t < T.walkIn) x = -90;
+  else if (t < T.walkInEnd) { const k = P(t, T.walkIn, T.walkInEnd); x = lerp(-90, 380, eIO(k)); moving = 1; }
+  else if (t < T.walkOut) x = 380;
+  else { const k = P(t, T.walkOut, T.storeOut); x = lerp(380, -140, eIO(k)); moving = 1; face = -1; }
+  const phase = (x + 90) / 46;
+  const sw = moving ? .5 * Math.sin(phase) : 0;
+  const bob = moving ? -Math.abs(Math.sin(phase)) * 7 : 0;
+  $('cust').setAttribute('transform', `translate(${x.toFixed(1)} 0)`);
+  $('custInner').setAttribute('transform', `translate(0 ${bob.toFixed(1)}) scale(${face} 1)`);
+  const hip = 1350, foot = 1432;
+  $('legL').setAttribute('x1', -14); $('legL').setAttribute('y1', hip);
+  $('legL').setAttribute('x2', (-14 + Math.sin(sw) * 80).toFixed(1)); $('legL').setAttribute('y2', (hip + Math.cos(sw) * 82).toFixed(1));
+  $('legR').setAttribute('x1', 14); $('legR').setAttribute('y1', hip);
+  $('legR').setAttribute('x2', (14 - Math.sin(sw) * 80).toFixed(1)); $('legR').setAttribute('y2', (hip + Math.cos(sw) * 82).toFixed(1));
+  // brazos: colgando ↔ encogerse de hombros
+  const sh = eOut(P(t, T.shrug, T.shrug + .35)) * (1 - eIO(P(t, T.walkOut - .45, T.walkOut - .1)));
+  const shoulder = 1268 - sh * 10;
+  const arm = (side) => {
+    const sx = side * 30, swing = moving ? -side * Math.sin(phase) * 18 : 0;
+    const ex = lerp(sx + side * 8 + swing * .4, sx + side * 54, sh), ey = lerp(shoulder + 52, shoulder + 26, sh);
+    const hx = lerp(sx + side * 10 + swing, sx + side * 78, sh), hy = lerp(shoulder + 100, shoulder - 22, sh);
+    return `${sx},${shoulder} ${ex.toFixed(1)},${ey.toFixed(1)} ${hx.toFixed(1)},${hy.toFixed(1)}`;
+  };
+  $('armL').setAttribute('points', arm(-1)); $('armR').setAttribute('points', arm(1));
+  $('body').setAttribute('y', 1250 - sh * 8);
+  // mirar alrededor
+  let ex = 3;
+  if (t > T.look && t < T.look + 1.6) ex = 7 * Math.sin((t - T.look) / 1.6 * Math.PI * 2) * -1 + 0;
+  if (t > T.bNadie - .2 && t < T.shrug) ex = 7 * eOut(P(t, T.bNadie - .2, T.bNadie + .2));
+  const tilt = (t > T.comprasAhi && t < T.shrug) ? -6 * eOut(P(t, T.comprasAhi, T.comprasAhi + .3)) : 0;
+  $('head').setAttribute('transform', `translate(0 ${(-sh * 8).toFixed(1)}) rotate(${tilt.toFixed(1)} 0 1204)`);
+  $('eyeL').setAttribute('cx', -12 + ex); $('eyeR').setAttribute('cx', 12 + ex);
+}
+
+function renderStore(t) {
+  const inK = eOut(P(t, T.storeIn - .1, T.storeIn + .6));
+  const outK = eIO(P(t, T.storeOut - .1, T.storeOut + .5));
+  const o = inK * (1 - outK), sc = lerp(.94, 1, inK) * lerp(1, .88, outK);
+  const g = $('store');
+  g.setAttribute('opacity', o.toFixed(3));
+  g.setAttribute('transform', `translate(540 1000) scale(${sc.toFixed(4)}) translate(-540 ${(-1000 + 60 * (1 - inK)).toFixed(1)})`);
+  $('cust').parentNode && ($('cust').style.opacity = (o * (t < T.storeOut + .2 ? 1 : 0)).toFixed(3));
+  // puerta: abrir/cerrar (se pliega hacia la bisagra)
+  const open = Math.max(eOut(P(t, T.doorOpen, T.doorOpen + .4)) * (1 - eIO(P(t, T.walkInEnd - .2, T.walkInEnd + .2))),
+                        eOut(P(t, T.walkOut - .3, T.walkOut + .1)));
+  const dw = lerp(190, 26, open);
+  $('doorPanel').setAttribute('width', dw.toFixed(1)); $('doorKnob').setAttribute('cx', (140 + dw - 25).toFixed(1));
+  $('doorKnob').setAttribute('opacity', (1 - open).toFixed(2));
+  // huecos de precio parpadean en rojo cuando sale "SIN PRECIOS"
+  const blink = t > T.bPrecios && t < T.bPrecios + 1.4 ? (Math.sin((t - T.bPrecios) * 14) > 0 ? 1 : 0) : 0;
+  tagEls.forEach(e => e.setAttribute('stroke', blink ? '#FF5A4E' : '#46525A'));
+  // dependiente mira al cliente
+  const kx = -6 * eOut(P(t, T.bNadie, T.bNadie + .3));
+  $('kEyeL').setAttribute('cx', 508 + kx); $('kEyeR').setAttribute('cx', 532 + kx);
+  setCustomer(t);
+
+  const end = T.storeOut + .15;
+  S(s2.title1, win(t, T.storeIn + .2, T.comprasAhi, .4, .2), 0, 26 * (1 - fin(t, T.storeIn + .2, .4)));
+  S(s2.title2, slamO(t, T.comprasAhi) * fout(t, end, .35), 0, 0, slamS(t, T.comprasAhi));
+  const dim = 1 - .55 * P(t, T.comprasAhi, T.comprasAhi + .3);
+  S(s2.precios, Math.min(1, popS(t, T.bPrecios)) * fout(t, end) * dim, 0, 0, popS(t, T.bPrecios), -3);
+  S(s2.cartel, Math.min(1, popS(t, T.bCartel)) * fout(t, end) * dim, 0, 0, popS(t, T.bCartel), 2);
+  S(s2.nadie, Math.min(1, popS(t, T.bNadie)) * fout(t, end) * dim, 0, 0, popS(t, T.bNadie), -2);
+  // "?" sigue la cabeza del cliente
+  const qx = t < T.walkOut ? 0 : lerp(0, -520, eIO(P(t, T.walkOut, T.storeOut)));
+  S(s2.q, Math.min(1, popS(t, T.comprasAhi - .2)) * fout(t, T.walkOut + .6, .4), qx,
+    -6 * Math.sin(Math.max(0, t - T.comprasAhi) * 3), popS(t, T.comprasAhi - .2));
+}
+
+function renderWeb(t) {
+  const inK = eOut(P(t, T.web, T.web + .6)), outK = eIO(P(t, T.fix - .2, T.fix + .35));
+  const g = $('web');
+  g.setAttribute('opacity', (inK * (1 - outK)).toFixed(3));
+  const sc = lerp(1.1, 1, inK);
+  g.setAttribute('transform', `translate(${(-700 * outK).toFixed(1)} 0) translate(540 1010) scale(${sc.toFixed(4)}) translate(-540 -1010)`);
+  // puntos: entran por la izquierda, chocan y rebotan
+  for (const d of DOTS) {
+    const k = (t - d.t0) / 1.25;
+    if (k < 0 || k > 1 || t > T.fix + .3) { d.e.setAttribute('opacity', 0); continue; }
+    const xi = -40, xm = 90 + d.depth;
+    const x = k < .45 ? lerp(xi, xm, eOut(k / .45)) : lerp(xm, -60, eIO((k - .45) / .55));
+    const y = d.y + (k > .45 ? (k - .45) * 60 * (hash(d.t0) - .5) : 0);
+    d.e.setAttribute('cx', x.toFixed(1)); d.e.setAttribute('cy', y.toFixed(1));
+    d.e.setAttribute('opacity', (Math.min(1, k * 6) * (1 - P(k, .75, 1)) * (1 - outK)).toFixed(3));
+    d.e.setAttribute('fill', k > .42 && k < .62 ? '#FF5A4E' : '#F4F6F2');
+  }
+  const end = T.fix + .1;
+  S(s3.title1, win(t, T.web + .3, T.masGente, .4, .2), 0, 26 * (1 - fin(t, T.web + .3, .4)));
+  S(s3.title2, slamO(t, T.masGente) * fout(t, end, .3), 0, 0, slamS(t, T.masGente));
+  const pb = (e, a, r) => S(e, Math.min(1, popS(t, a)) * fout(t, end), -700 * outK, 0, popS(t, a), r);
+  pb(s3.resenas, T.rResenas, -3); pb(s3.garantia, T.rGarantia, 2); pb(s3.llegara, T.rLlegara, -2); pb(s3.ventas, T.masGente + .4, 3);
+}
+
+// ===========================================================================
+// ESCENA 4 · Solución (24-37 s)
+// ===========================================================================
+const checkSVG = `<svg width="110" height="110" viewBox="0 0 110 110"><path d="M32 57 L48 73 L80 39" fill="none" stroke="#07090A" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80"/></svg>`;
+const s4 = {
+  t1: textAt('Antes de traer<br>más gente,', 290, 76),
+  t1b: textAt('arregla esto', 450, 104, 'ac'),
+  t2: textAt('Primero, <span class="ac">confianza.</span><br>Luego, tráfico.', 320, 86),
+  cards: [
+    ['Qué vendes', 'Que se entienda en 3 segundos', 'card1'],
+    ['Reseñas', 'De clientes reales, a la vista', 'card2'],
+    ['Qué pasa si falla', 'Garantía, envíos y devoluciones', 'card3'],
+  ].map(([a, b, k], i) => {
+    const c = el(`<div class="chk">${checkSVG}</div><div class="ttl">${a}</div><div class="sub">${b}</div>`, 'card', { left: '90px', top: (680 + i * 240) + 'px' });
+    c.key = k; return c;
+  }),
+};
+cue(T.fix - .05, 'swoosh', .7); cue(T.fix + .35, 'thud', .7);
+s4.cards.forEach(c => { cue(T[c.key] - .1, 'swoosh', .5); cue(T[c.key] + .55, 'ding', .7); });
+cue(T.confianza, 'thud', .6);
+
+function renderFix(t) {
+  const end = HAS_PROOF ? T.proof + .15 : T.cta + .15;
+  S(s4.t1, win(t, T.fix + .1, T.confianza, .35, .25), 0, 26 * (1 - fin(t, T.fix + .1, .35)));
+  S(s4.t1b, slamO(t, T.fix + .35) * fout(t, T.confianza, .25), 0, 0, slamS(t, T.fix + .35));
+  S(s4.t2, slamO(t, T.confianza) * fout(t, end, .35), 0, 0, slamS(t, T.confianza));
+  s4.cards.forEach((c, i) => {
+    const a = T[c.key], k = eOut5(P(t, a - .1, a + .45));
+    const exitK = eIO(P(t, end - .45, end));
+    S(c, k * (1 - exitK), 760 * (1 - k), -60 * exitK);
+    const ck = P(t, a + .5, a + .62);
+    const chk = c.querySelector('.chk');
+    chk.style.background = ck > 0 ? '#BFEF9F' : 'transparent';
+    chk.style.borderColor = ck > 0 ? '#BFEF9F' : '#3A4448';
+    chk.style.transform = `scale(${t < a + .5 ? 1 : popS(t, a + .5, .35).toFixed(3)})`;
+    chk.querySelector('path').setAttribute('stroke-dashoffset', (80 * (1 - eOut(P(t, a + .55, a + .8)))).toFixed(1));
+    const glow = P(t, T.confianza + i * .15, T.confianza + i * .15 + .3);
+    c.style.borderColor = glow > 0 ? `rgba(191,239,159,${(.25 + .5 * glow).toFixed(2)})` : '';
+  });
+}
+
+// ===========================================================================
+// ESCENA 5 · Prueba social (opcional, solo si existe assets/tienda.png)
+// ===========================================================================
+const s5 = {
+  frame: centered('<img src="assets/tienda.png" alt="">', '', 540, 1010, { width: '560px', height: '1000px' }),
+  title: textAt('Lo primero que miro<br>en mis tiendas', 300, 64),
+};
+s5.frame.id = 'proofFrame';
+if (HAS_PROOF) { cue(T.proof - .05, 'swoosh', .7); }
+function renderProof(t) {
+  if (!HAS_PROOF) { S(s5.frame, 0); S(s5.title, 0); return; }
+  const k = eOut(P(t, T.proof, T.proof + .5));
+  S(s5.frame, k * fout(t, T.cta + .15, .35), 0, 120 * (1 - k), lerp(.92, 1, k));
+  S(s5.title, win(t, T.proof + .15, T.cta + .15, .35, .35), 0, 20 * (1 - fin(t, T.proof + .15, .35)));
+}
+
+// ===========================================================================
+// ESCENA 6 · Llamada a la acción (37-45 s)
+// ===========================================================================
+const s6 = {
+  comenta: textAt('Comenta', 330, 150),
+  tienda: textAt('Tienda', 470, 230, 'ac'),
+  comment: el(`<div style="position:absolute;left:24px;top:24px;width:108px;height:108px;border-radius:50%;background:#2E373B">
+      <svg width="108" height="108" viewBox="0 0 108 108"><circle cx="54" cy="42" r="17" fill="#6B7579"/><path d="M24 90 a30 26 0 0 1 60 0 Z" fill="#6B7579"/></svg></div>
+    <div id="typed" style="position:absolute;left:160px;top:44px;font-weight:800;font-size:66px;letter-spacing:-0.01em;line-height:1;white-space:nowrap"></div>
+    <div id="send" style="position:absolute;right:26px;top:26px;width:102px;height:102px;border-radius:50%;background:#232B2E">
+      <svg width="102" height="102" viewBox="0 0 102 102"><path d="M30 51 H70 M54 35 L70 51 L54 67" fill="none" stroke="#07090A" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`,
+    '', { left: '110px', top: '840px' }),
+  lista: textAt('Te mando la lista', 1080, 76),
+  listaSub: textAt('de lo que tiene que haber<br>en cada parte de tu tienda', 1170, 44, 'mut', { textTransform: 'none', fontWeight: 500, letterSpacing: '0', lineHeight: '1.2' }),
+  handle: textAt('<span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--ac);margin-right:16px;vertical-align:middle;position:relative;top:-4px"></span>@joaquinperez.ecom', 1440, 48, '', { textTransform: 'none', fontWeight: 600, letterSpacing: '0' }),
+};
+s6.comment.id = 'comment';
+const WORD = 'TIENDA', TYPE_STEP = .2;
+cue(T.cta - .05, 'swoosh', .8); cue(T.cta + .4, 'thud', 1);
+for (let i = 0; i < WORD.length; i++) cue(T.typeStart + i * TYPE_STEP, 'key', .45);
+cue(T.send, 'ding', .8); cue(T.lista, 'pop', .5); cue(T.handle, 'pop', .4);
+
+function renderCTA(t) {
+  S(s6.comenta, fin(t, T.cta + .1, .35), 0, 30 * (1 - fin(t, T.cta + .1, .35)));
+  const pulse = t > T.cta + 1 ? 1 + .035 * Math.sin((t - T.cta - 1) * Math.PI * 2 / 1.3) : 1;
+  S(s6.tienda, slamO(t, T.cta + .4), 0, 0, slamS(t, T.cta + .4) * pulse);
+  const ck = eOut(P(t, T.cta + 1.0, T.cta + 1.5));
+  S(s6.comment, ck, 0, 80 * (1 - ck), t > T.send && t < T.send + .3 ? 1 + .04 * Math.sin(P(t, T.send, T.send + .3) * Math.PI) : 1);
+  const n = clamp(Math.floor((t - T.typeStart) / TYPE_STEP) + 1, 0, WORD.length);
+  const caretOn = t < T.send && Math.floor(t * 2.4) % 2 === 0;
+  $('typed').innerHTML = WORD.slice(0, n) + `<span style="display:inline-block;width:6px;height:62px;margin-left:6px;vertical-align:-6px;background:${caretOn ? 'var(--ac)' : 'transparent'}"></span>`;
+  $('typed').style.color = t >= T.send ? 'var(--ac)' : 'var(--fg)';
+  $('send').style.background = t >= T.send ? '#BFEF9F' : '#232B2E';
+  $('send').style.transform = `scale(${t < T.send ? 1 : popS(t, T.send, .35).toFixed(3)})`;
+  S(s6.lista, fin(t, T.lista, .4), 0, 30 * (1 - fin(t, T.lista, .4)));
+  S(s6.listaSub, fin(t, T.lista + .3, .4), 0, 24 * (1 - fin(t, T.lista + .3, .4)));
+  S(s6.handle, fin(t, T.handle, .4), 0, 20 * (1 - fin(t, T.handle, .4)));
+}
+
+// ===========================================================================
+// render(t): cámara con sacudida en los golpes y todas las escenas
+// ===========================================================================
+const SHAKES = CUES.filter(c => c.type === 'thud').map(c => [c.t, c.gain]);
+window.render = function (t) {
+  let sx = 0, sy = 0;
+  for (const [a, g] of SHAKES) if (t >= a && t < a + .4) {
+    const d = t - a, amp = 14 * g * Math.exp(-d * 14);
+    sx += amp * Math.sin(d * 90); sy += amp * .7 * Math.cos(d * 75);
+  }
+  stage.style.transform = `translate(${sx.toFixed(2)}px,${sy.toFixed(2)}px)`;
+  renderS1(t); renderStore(t); renderWeb(t); renderFix(t); renderProof(t); renderCTA(t);
+};
+window.CUES = CUES.sort((a, b) => a.t - b.t);
+window.DURATION = DURATION;
+window.HAS_PROOF = HAS_PROOF;
+window.TIMES = T;
+
+// Vista previa en el navegador: reproduce en tiempo real (el render usa render(t) directamente).
+if (Q.get('play') !== '0') {
+  const t0 = performance.now();
+  const loop = () => { if (window.__frozen) return; window.render(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(loop); };
+  document.fonts.ready.then(loop);
+}
+</script>
+</body>
+</html>
