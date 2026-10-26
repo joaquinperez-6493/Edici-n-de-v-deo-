@@ -1,6 +1,6 @@
-"""Sintetiza la pista de efectos (sin música) a partir de out/cues.json.
+"""Sintetiza la pista de efectos a partir de out/cues.json.
 
-Efectos: swoosh, pop, thud (golpe seco), ding (check), tick, blip, key (tecla).
+Efectos: swoosh, pop, thud (golpe seco), ding (check), tick, blip, key (tecla), step, door.
 Salida: out/sfx.wav (48 kHz, estéreo, volumen bajo).
 """
 import json
@@ -84,7 +84,24 @@ def key():
     return noise * env(n, .0005, .008) * .2
 
 
-SYNTH = {"swoosh": swoosh, "pop": pop, "thud": thud, "ding": ding, "tick": tick, "blip": blip, "key": key}
+def step():
+    n = int(.09 * SR)
+    t = np.arange(n) / SR
+    thump = np.sin(2 * np.pi * (90 + 60 * np.exp(-t * 40)) * t) * env(n, .002, .03)
+    scuff = lowpass(rng.standard_normal(n), 1800) * env(n, .001, .015)
+    return (thump * .8 + scuff * .6) * .6
+
+
+def door():
+    n = int(.35 * SR)
+    t = np.arange(n) / SR
+    click = lowpass(rng.standard_normal(n), 2500) * env(n, .0005, .01)
+    knock = np.sin(2 * np.pi * 160 * t) * env(n, .002, .06)
+    creak = np.sin(2 * np.pi * np.cumsum(420 + 80 * np.sin(t * 40)) / SR) * env(n, .05, .12) * .15
+    return (click * .7 + knock * .5 + creak) * .7
+
+
+SYNTH = {"step": step, "door": door, "swoosh": swoosh, "pop": pop, "thud": thud, "ding": ding, "tick": tick, "blip": blip, "key": key}
 
 
 def main():

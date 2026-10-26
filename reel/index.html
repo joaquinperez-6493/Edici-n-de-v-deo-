@@ -43,17 +43,17 @@ const Q = new URLSearchParams(location.search);
 const HAS_PROOF = Q.get('proof') === '1';
 const DURATION = 45;
 
-// Marcas de tiempo de cada escena (ajustables al audio de voz).
+// Marcas de tiempo de cada escena, sincronizadas con las pausas de la voz (audio_in/voz.mp3).
 const T = {
-  hookEnd: 4,
-  storeIn: 4, doorOpen: 5.0, walkIn: 5.4, walkInEnd: 7.2, look: 7.2,
-  bPrecios: 8.2, bCartel: 9.8, bNadie: 11.6, comprasAhi: 13.4,
-  shrug: 15.0, walkOut: 16.5, storeOut: 18,
-  web: 18, rResenas: 19.6, rGarantia: 20.9, rLlegara: 22.1, masGente: 22.5,
-  fix: 24, card1: 26.2, card2: 28.2, card3: 30.0,
-  confianza: HAS_PROOF ? 32.4 : 33.4,
-  proof: 34,
-  cta: 37, typeStart: 38.6, send: 40.1, lista: 40.6, handle: 41.6,
+  ventas: 2.76, falta: 4.3, hookEnd: 6.3,
+  storeIn: 6.3, doorOpen: 6.9, walkIn: 7.2, walkInEnd: 9.2, look: 9.2,
+  bPrecios: 10.85, bCartel: 12.68, bNadie: 14.92, comprasAhi: 18.45,
+  shrug: 18.75, walkOut: 19.6, storeOut: 20.45,
+  web: 20.45, rResenas: 22.6, rGarantia: 23.85, rLlegara: 25.6, masGente: 27.38,
+  fix: 30.6, arregla: 32.3, card1: 33.6, card2: 35.05, card3: 36.7,
+  confianza: HAS_PROOF ? 37.4 : 38.0,
+  proof: 38.0,
+  cta: 39.25, comment: 40.1, typeStart: 40.45, send: 41.75, lista: 41.0, handle: 42.6,
 };
 
 // ---------- utilidades ----------
@@ -109,7 +109,7 @@ const s1 = {
   ej: centered('Ejemplo', 'pill', 540, 1420),
 };
 for (let i = 1; i <= 10; i++) cue(0.3 + 1.5 * (1 - Math.cbrt(1 - i / 10)), 'tick', .5);
-cue(1.8, 'pop', .8); cue(2.0, 'thud', 1); cue(2.8, 'pop', .5); cue(T.hookEnd - .1, 'swoosh', .8);
+cue(1.8, 'pop', .8); cue(T.ventas, 'thud', 1); cue(T.falta, 'pop', .5); cue(T.hookEnd - .1, 'swoosh', .8);
 
 function renderS1(t) {
   const out = fout(t, T.hookEnd + .2, .4), up = -80 * eIO(P(t, T.hookEnd - .2, T.hookEnd + .2));
@@ -118,8 +118,8 @@ function renderS1(t) {
   const bump = 1 + .08 * Math.sin(Math.PI * P(t, 1.8, 2.0));
   S(s1.label, fin(t, 0, .3) * out, 0, up + 30 * (1 - fin(t, 0, .4)));
   S(s1.num, fin(t, 0, .25) * out, 0, up, bump);
-  S(s1.ventas, slamO(t, 2.0) * out, 0, up, slamS(t, 2.0));
-  S(s1.falta, fin(t, 2.8, .4) * out, 0, up + 24 * (1 - fin(t, 2.8, .4)));
+  S(s1.ventas, slamO(t, T.ventas) * out, 0, up, slamS(t, T.ventas));
+  S(s1.falta, fin(t, T.falta, .4) * out, 0, up + 24 * (1 - fin(t, T.falta, .4)));
   S(s1.ej, fin(t, .2, .4) * out, 0, up);
 }
 
@@ -258,19 +258,32 @@ const s3 = {
   llegara: centered('¿Me llegará?', 'bub', 560, 1290),
   ventas: centered('Ventas: 0', 'bub', 850, 1440, { fontSize: '40px', padding: '10px 24px' }),
 };
-[[T.storeIn - .05, 'swoosh', .6], [T.doorOpen, 'pop', .35], [T.bPrecios, 'pop', .8], [T.bCartel, 'pop', .8], [T.bNadie, 'pop', .8],
- [T.comprasAhi, 'thud', 1], [T.comprasAhi - .2, 'pop', .6], [T.shrug, 'swoosh', .35], [T.walkOut - .2, 'pop', .35],
+[[T.storeIn - .05, 'swoosh', .6], [T.bPrecios, 'pop', .8], [T.bCartel, 'pop', .8], [T.bNadie, 'pop', .8],
+ [T.comprasAhi, 'thud', 1], [T.comprasAhi - .2, 'pop', .6], [T.shrug, 'swoosh', .35],
  [T.web - .05, 'swoosh', .8], [T.rResenas, 'pop', .8], [T.rGarantia, 'pop', .8], [T.rLlegara, 'pop', .8], [T.masGente, 'thud', .6], [T.masGente + .4, 'pop', .6]]
   .forEach(c => cue(...c));
 DOTS.forEach((d, i) => { if (i % 3 === 0) cue(d.t0 + .45, 'blip', .25); });
 
 // pose del cliente
+function custPos(t) {
+  if (t < T.walkIn) return [-90, 0, 1];
+  if (t < T.walkInEnd) return [lerp(-90, 380, eIO(P(t, T.walkIn, T.walkInEnd))), 1, 1];
+  if (t < T.walkOut) return [380, 0, 1];
+  return [lerp(380, -140, eIO(P(t, T.walkOut, T.storeOut))), 1, -1];
+}
+// pasos: un sonido cada vez que una pierna toca el suelo
+{
+  let last = null;
+  for (let t = T.walkIn; t < T.storeOut; t += 1 / 120) {
+    const [x, moving] = custPos(t);
+    const step = Math.floor((x + 90) / 46 / Math.PI);
+    if (moving && last !== null && step !== last) cue(t, 'step', .5);
+    last = moving ? step : null;
+  }
+}
+cue(T.doorOpen, 'door', .6); cue(T.walkOut - .3, 'door', .5);
 function setCustomer(t) {
-  let x, moving = 0, face = 1;
-  if (t < T.walkIn) x = -90;
-  else if (t < T.walkInEnd) { const k = P(t, T.walkIn, T.walkInEnd); x = lerp(-90, 380, eIO(k)); moving = 1; }
-  else if (t < T.walkOut) x = 380;
-  else { const k = P(t, T.walkOut, T.storeOut); x = lerp(380, -140, eIO(k)); moving = 1; face = -1; }
+  const [x, moving, face] = custPos(t);
   const phase = (x + 90) / 46;
   const sw = moving ? .5 * Math.sin(phase) : 0;
   const bob = moving ? -Math.abs(Math.sin(phase)) * 7 : 0;
@@ -377,14 +390,14 @@ const s4 = {
     c.key = k; return c;
   }),
 };
-cue(T.fix - .05, 'swoosh', .7); cue(T.fix + .35, 'thud', .7);
+cue(T.fix - .05, 'swoosh', .7); cue(T.arregla, 'thud', .7);
 s4.cards.forEach(c => { cue(T[c.key] - .1, 'swoosh', .5); cue(T[c.key] + .55, 'ding', .7); });
 cue(T.confianza, 'thud', .6);
 
 function renderFix(t) {
   const end = HAS_PROOF ? T.proof + .15 : T.cta + .15;
   S(s4.t1, win(t, T.fix + .1, T.confianza, .35, .25), 0, 26 * (1 - fin(t, T.fix + .1, .35)));
-  S(s4.t1b, slamO(t, T.fix + .35) * fout(t, T.confianza, .25), 0, 0, slamS(t, T.fix + .35));
+  S(s4.t1b, slamO(t, T.arregla) * fout(t, T.confianza, .25), 0, 0, slamS(t, T.arregla));
   S(s4.t2, slamO(t, T.confianza) * fout(t, end, .35), 0, 0, slamS(t, T.confianza));
   s4.cards.forEach((c, i) => {
     const a = T[c.key], k = eOut5(P(t, a - .1, a + .45));
@@ -435,15 +448,15 @@ const s6 = {
 };
 s6.comment.id = 'comment';
 const WORD = 'TIENDA', TYPE_STEP = .2;
-cue(T.cta - .05, 'swoosh', .8); cue(T.cta + .4, 'thud', 1);
+cue(T.cta - .05, 'swoosh', .8); cue(T.cta + .45, 'thud', 1);
 for (let i = 0; i < WORD.length; i++) cue(T.typeStart + i * TYPE_STEP, 'key', .45);
 cue(T.send, 'ding', .8); cue(T.lista, 'pop', .5); cue(T.handle, 'pop', .4);
 
 function renderCTA(t) {
   S(s6.comenta, fin(t, T.cta + .1, .35), 0, 30 * (1 - fin(t, T.cta + .1, .35)));
   const pulse = t > T.cta + 1 ? 1 + .035 * Math.sin((t - T.cta - 1) * Math.PI * 2 / 1.3) : 1;
-  S(s6.tienda, slamO(t, T.cta + .4), 0, 0, slamS(t, T.cta + .4) * pulse);
-  const ck = eOut(P(t, T.cta + 1.0, T.cta + 1.5));
+  S(s6.tienda, slamO(t, T.cta + .45), 0, 0, slamS(t, T.cta + .45) * pulse);
+  const ck = eOut(P(t, T.comment, T.comment + .45));
   S(s6.comment, ck, 0, 80 * (1 - ck), t > T.send && t < T.send + .3 ? 1 + .04 * Math.sin(P(t, T.send, T.send + .3) * Math.PI) : 1);
   const n = clamp(Math.floor((t - T.typeStart) / TYPE_STEP) + 1, 0, WORD.length);
   const caretOn = t < T.send && Math.floor(t * 2.4) % 2 === 0;
