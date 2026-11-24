@@ -1,0 +1,798 @@
+<meta charset="utf-8">
+<title>1STI Store</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una sola noche de laboratorio. Cabecera fija, hero con osciloscopio vivo, vitrina de 8 módulos sobre peanas claras, banda de cifras, carrito lateral. */
+:root{
+  --ink:#080B16;        /* fondo */
+  --ink-2:#0F1428;      /* superficies */
+  --ink-3:#171E3A;      /* bordes y chips */
+  --paper:#EEF1F8;      /* peana del producto */
+  --fg:#E9ECF7;         /* texto */
+  --muted:#8C93B2;      /* texto secundario */
+  --cobalt:#3D6BFF;     /* acento principal */
+  --signal:#FF8A1F;     /* señal (naranja de la antena) */
+  --cyan:#3FE0FF;
+  --ok:#35D49A;
+  --line:rgba(233,236,247,.09);
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:18px;
+  --gut-l:max(16px, env(safe-area-inset-left, 0px));
+  --gut-r:max(16px, env(safe-area-inset-right, 0px));
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;background:var(--ink)}
+body{background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.55;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--ink)}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1240px;margin:0 auto;padding-left:var(--gut-l);padding-right:var(--gut-r)}
+.mono{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.04em}
+.eyebrow{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.02}
+
+/* ---------- Ticker ---------- */
+.ticker{background:var(--signal);color:#160A00;overflow:hidden;white-space:nowrap;font-family:var(--f-mono);font-size:.74rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+.ticker .track{display:inline-flex;gap:48px;padding-block:8px;animation:tick 32s linear infinite}
+.ticker span::before{content:"◆";margin-right:48px;opacity:.55}
+@keyframes tick{to{transform:translateX(-50%)}}
+
+/* ---------- Header ---------- */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:rgba(8,11,22,.72);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:24px;height:68px}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:900;font-size:1.35rem;letter-spacing:-.02em}
+.logo-mark{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:conic-gradient(from 210deg,var(--cobalt),var(--cyan),var(--signal),var(--cobalt));position:relative}
+.logo-mark::after{content:"";position:absolute;inset:3px;border-radius:8px;background:var(--ink)}
+.logo-mark svg{position:relative;z-index:1}
+nav.main{display:flex;gap:26px;margin-left:auto;font-weight:600;font-size:.92rem;color:var(--muted)}
+nav.main a:hover{color:var(--fg)}
+.cart-btn{position:relative;display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;background:var(--fg);color:var(--ink);font-weight:700;font-size:.9rem;transition:transform .2s}
+.cart-btn:hover{transform:translateY(-1px)}
+.cart-count{min-width:22px;height:22px;border-radius:11px;background:var(--cobalt);color:#fff;display:grid;place-items:center;font-size:.72rem;font-family:var(--f-mono);padding:0 6px}
+.cart-btn.bump{animation:bump .5s cubic-bezier(.3,1.8,.5,1)}
+@keyframes bump{40%{transform:scale(1.14)}}
+
+/* ---------- Hero ---------- */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+#scope{position:absolute;inset:0;width:100%;height:100%;opacity:.9}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 70% at 78% 45%,rgba(61,107,255,.22),transparent 70%),radial-gradient(40% 50% at 10% 100%,rgba(255,138,31,.10),transparent 70%);pointer-events:none}
+.hero .wrap{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding-block:72px 80px}
+.hero-copy{min-width:0}
+.hero h1{font-size:clamp(3rem,8.4vw,7.4rem);font-weight:900;letter-spacing:-.045em;margin-top:18px}
+.hero h1 .grad{background:linear-gradient(100deg,var(--cobalt) 0%,var(--cyan) 45%,var(--signal) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;animation:sheen 6s ease-in-out infinite alternate}
+@keyframes sheen{to{background-position:100% 0}}
+.hero .lead{font-size:1.15rem;color:var(--muted);max-width:34ch;margin:22px 0 32px}
+.hero .lead b{color:var(--fg);font-weight:600}
+.cta-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:16px 26px;border-radius:999px;font-weight:700;font-size:.98rem;transition:transform .25s cubic-bezier(.2,.9,.3,1.3),box-shadow .25s,background .25s}
+.btn-primary{background:var(--cobalt);color:#fff;box-shadow:0 10px 40px -10px rgba(61,107,255,.8),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 18px 50px -12px rgba(61,107,255,.95),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn-ghost{border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.btn-ghost:hover{background:rgba(255,255,255,.07)}
+
+.countdown{display:flex;gap:10px;margin-top:38px;align-items:stretch;flex-wrap:wrap}
+.cd-label{display:flex;flex-direction:column;justify-content:center;padding-right:8px}
+.cd-label b{font-family:var(--f-display);font-size:.95rem;color:var(--signal)}
+.cd-cell{min-width:66px;padding:10px 12px;border-radius:12px;background:rgba(15,20,40,.8);border:1px solid var(--line);text-align:center}
+.cd-cell b{display:block;font-family:var(--f-mono);font-size:1.6rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.cd-cell small{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+
+/* Showcase */
+.showcase{position:relative;aspect-ratio:1/1;max-width:520px;width:100%;justify-self:end}
+.orbit{position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(233,236,247,.12);animation:spin 60s linear infinite}
+.orbit.o2{inset:13%;border-style:solid;border-color:rgba(63,224,255,.10);animation-duration:40s;animation-direction:reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stage{position:absolute;inset:18%;border-radius:50%;background:radial-gradient(circle at 50% 38%,#FFFFFF 0%,var(--paper) 55%,#C9D1E6 100%);box-shadow:0 40px 120px -30px rgba(61,107,255,.65),0 0 0 10px rgba(255,255,255,.03),0 0 0 22px rgba(255,255,255,.02);overflow:hidden;display:grid;place-items:center;transform-style:preserve-3d;transition:transform .2s}
+.stage img{width:78%;height:78%;object-fit:contain;mix-blend-mode:multiply;transition:opacity .45s,transform .7s cubic-bezier(.2,.8,.2,1)}
+.stage img.out{opacity:0;transform:scale(.8) rotate(-8deg)}
+.tag-float{position:absolute;left:0;bottom:12%;padding:12px 16px;border-radius:14px;background:rgba(15,20,40,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);min-width:200px;max-width:70%}
+.tag-float .mono{color:var(--cyan)}
+.tag-float strong{display:block;font-size:.95rem;line-height:1.3;margin-top:2px}
+.tag-float .p{font-family:var(--f-display);font-weight:800;font-size:1.15rem;margin-top:4px}
+.price-float{position:absolute;right:2%;top:10%;width:92px;height:92px;border-radius:50%;background:var(--signal);color:#160A00;display:grid;place-items:center;text-align:center;font-family:var(--f-display);font-weight:900;font-size:1.05rem;line-height:1;transform:rotate(12deg);box-shadow:0 14px 40px -10px rgba(255,138,31,.7)}
+.price-float small{display:block;font-family:var(--f-mono);font-size:.58rem;font-weight:600;letter-spacing:.1em;margin-top:4px}
+.dots{position:absolute;right:4%;bottom:4%;display:flex;gap:6px}
+.dots button{width:8px;height:8px;border-radius:4px;background:rgba(233,236,247,.25);transition:width .3s,background .3s;padding:0}
+.dots button.on{width:26px;background:var(--cyan)}
+
+/* ---------- Strip of trust ---------- */
+.trust{border-bottom:1px solid var(--line);background:var(--ink-2)}
+.trust .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.trust div{padding-block:22px;display:flex;gap:12px;align-items:center;font-size:.9rem;color:var(--muted);border-left:1px solid var(--line);padding-left:20px;min-width:0}
+.trust div:first-child{border-left:0;padding-left:0}
+.trust b{color:var(--fg);display:block;font-size:.95rem}
+.trust svg{flex:none;color:var(--cyan)}
+
+/* ---------- Catalog ---------- */
+section{padding-block:96px}
+.sec-head{display:flex;justify-content:space-between;align-items:end;gap:24px;flex-wrap:wrap;margin-bottom:36px}
+.sec-head h2{font-size:clamp(2rem,4.6vw,3.6rem);font-weight:800;letter-spacing:-.035em}
+.sec-head p{color:var(--muted);max-width:42ch;margin:12px 0 0}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:30px}
+.chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.02);font-size:.84rem;font-weight:600;color:var(--muted);transition:all .2s;white-space:nowrap}
+.chip:hover{color:var(--fg);border-color:rgba(233,236,247,.25)}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg)}
+.chip .n{font-family:var(--f-mono);opacity:.6;margin-right:6px}
+.tools{display:flex;gap:12px;align-items:center;margin-left:auto}
+select{background:var(--ink-2);border:1px solid var(--line);color:var(--fg);padding:10px 14px;border-radius:12px;font:inherit;font-size:.86rem}
+
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.card{position:relative;border-radius:var(--r);background:var(--ink-2);border:1px solid var(--line);display:flex;flex-direction:column;transform-style:preserve-3d;transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .35s;will-change:transform;min-width:0}
+.card:hover{border-color:rgba(63,224,255,.28);box-shadow:0 30px 80px -30px rgba(61,107,255,.55)}
+.card .media{position:relative;margin:10px;border-radius:12px;background:radial-gradient(circle at 50% 35%,#fff,var(--paper) 70%);aspect-ratio:1/1;overflow:hidden;cursor:zoom-in}
+.card .media img{width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply;transition:transform .6s cubic-bezier(.2,.8,.2,1);transform:translateZ(0)}
+.card:hover .media img{transform:scale(1.07)}
+.glare{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(circle at var(--gx,50%) var(--gy,0%),rgba(255,255,255,.55),transparent 45%);opacity:0;transition:opacity .3s;mix-blend-mode:soft-light}
+.card:hover .glare{opacity:1}
+.mod{position:absolute;top:10px;left:10px;padding:5px 9px;border-radius:8px;background:rgba(8,11,22,.88);color:var(--fg);font-family:var(--f-mono);font-size:.66rem;letter-spacing:.1em}
+.badge{position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:8px;font-family:var(--f-mono);font-size:.66rem;font-weight:600;letter-spacing:.06em;background:var(--signal);color:#160A00}
+.badge.cool{background:var(--ok);color:#03150E}
+.card .body{padding:6px 18px 18px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card .cat{color:var(--cyan)}
+.card h3{font-family:var(--f-body);font-weight:700;font-size:1.02rem;line-height:1.3;letter-spacing:0}
+.card .spec{color:var(--muted)}
+.card .foot{margin-top:auto;padding-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.price{font-family:var(--f-display);font-weight:800;font-size:1.3rem;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.price s{display:block;font-family:var(--f-mono);font-size:.72rem;font-weight:400;color:var(--muted);letter-spacing:0}
+.add{width:46px;height:46px;border-radius:50%;background:var(--fg);color:var(--ink);display:grid;place-items:center;transition:transform .25s cubic-bezier(.2,.9,.3,1.5),background .25s;flex:none}
+.add:hover{transform:scale(1.1) rotate(90deg);background:var(--cyan)}
+.add.done{background:var(--ok)}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px}
+
+/* ---------- Numbers band ---------- */
+.band{background:linear-gradient(180deg,var(--ink-2),var(--ink));border-block:1px solid var(--line)}
+.nums{display:grid;grid-template-columns:repeat(5,1fr);gap:0}
+.num{padding:26px 22px;border-left:1px solid var(--line);min-width:0}
+.num:first-child{border-left:0}
+.num b{display:block;font-family:var(--f-display);font-weight:900;font-size:clamp(1.7rem,3.6vw,2.9rem);letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1}
+.num b em{font-style:normal;font-size:.45em;color:var(--cyan);margin-left:4px;letter-spacing:0}
+.num span{display:block;margin-top:10px;color:var(--muted);font-size:.86rem}
+
+/* ---------- Bundle ---------- */
+.bundle{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;padding:48px;border-radius:28px;background:radial-gradient(80% 120% at 100% 0%,rgba(61,107,255,.35),transparent 60%),var(--ink-2);border:1px solid var(--line);overflow:hidden;position:relative}
+.bundle h2{font-size:clamp(1.9rem,4vw,3.2rem);font-weight:800;letter-spacing:-.035em}
+.bundle p{color:var(--muted);max-width:44ch}
+.bundle .pile{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.bundle .pile div{aspect-ratio:1;border-radius:14px;background:var(--paper);display:grid;place-items:center;overflow:hidden;transition:transform .4s}
+.bundle .pile div:nth-child(odd){transform:translateY(14px)}
+.bundle .pile img{width:86%;height:86%;object-fit:contain;mix-blend-mode:multiply}
+.bundle .total{display:flex;align-items:baseline;gap:14px;margin:22px 0 26px;flex-wrap:wrap}
+.bundle .total b{font-family:var(--f-display);font-size:2.4rem;font-weight:900;letter-spacing:-.04em}
+.bundle .total s{color:var(--muted);font-family:var(--f-mono)}
+.bundle .total .save{font-family:var(--f-mono);font-size:.78rem;background:var(--ok);color:#03150E;padding:4px 8px;border-radius:6px;font-weight:600}
+
+/* ---------- Footer ---------- */
+footer{border-top:1px solid var(--line);padding-block:56px 40px;color:var(--muted);font-size:.9rem}
+.fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:32px}
+footer h4{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--fg);margin:0 0 14px;font-weight:600}
+footer ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+footer a:hover{color:var(--fg)}
+.news{display:flex;gap:8px;margin-top:6px}
+.news input{flex:1;min-width:0;background:var(--ink-2);border:1px solid var(--line);color:var(--fg);padding:12px 14px;border-radius:12px;font:inherit}
+.news button{padding:12px 16px;border-radius:12px;background:var(--fg);color:var(--ink);font-weight:700}
+.giant{font-family:var(--f-display);font-weight:900;font-size:clamp(5rem,26vw,22rem);letter-spacing:-.06em;line-height:.8;margin-top:56px;color:transparent;-webkit-text-stroke:1px rgba(233,236,247,.14);text-align:center;user-select:none;overflow:hidden}
+.legal{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:28px;font-size:.8rem}
+
+/* ---------- Drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(3,5,12,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:80;opacity:0;pointer-events:none;transition:opacity .3s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);z-index:90;background:var(--ink-2);border-left:1px solid var(--line);transform:translateX(105%);transition:transform .45s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.drawer.on{transform:none}
+.dr-head{display:flex;justify-content:space-between;align-items:center;padding:22px 24px;border-bottom:1px solid var(--line)}
+.dr-head h3{font-size:1.2rem;font-weight:800}
+.x{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center}
+.x:hover{background:rgba(255,255,255,.06)}
+.ship{padding:16px 24px;border-bottom:1px solid var(--line);font-size:.86rem;color:var(--muted)}
+.ship b{color:var(--fg)}
+.bar{height:6px;border-radius:3px;background:var(--ink-3);margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cobalt),var(--cyan));transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.lines{flex:1;overflow-y:auto;padding:8px 24px}
+.line{display:grid;grid-template-columns:72px 1fr auto;gap:14px;padding:16px 0;border-bottom:1px solid var(--line);align-items:center}
+.line .th{width:72px;height:72px;border-radius:12px;background:var(--paper);display:grid;place-items:center;overflow:hidden}
+.line .th img{width:88%;height:88%;object-fit:contain;mix-blend-mode:multiply}
+.line h5{margin:0;font-size:.9rem;line-height:1.3;font-weight:700}
+.qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;margin-top:8px}
+.qty button{width:30px;height:30px;display:grid;place-items:center;border-radius:50%}
+.qty button:hover{background:rgba(255,255,255,.07)}
+.qty span{min-width:24px;text-align:center;font-family:var(--f-mono);font-size:.85rem}
+.line .lp{font-family:var(--f-mono);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.line .rm{display:block;margin-top:8px;font-size:.75rem;color:var(--muted);text-decoration:underline;margin-left:auto}
+.dr-empty{text-align:center;padding:56px 10px;color:var(--muted)}
+.dr-empty b{display:block;font-family:var(--f-display);color:var(--fg);font-size:1.15rem;margin-bottom:8px}
+.dr-foot{padding:20px 24px 24px;border-top:1px solid var(--line);display:grid;gap:12px}
+.code{display:flex;gap:8px}
+.code input{flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);color:var(--fg);padding:11px 14px;border-radius:12px;font-family:var(--f-mono);font-size:.85rem;text-transform:uppercase}
+.code button{padding:0 16px;border-radius:12px;border:1px solid var(--line);font-weight:600;font-size:.86rem}
+.code-msg{font-size:.78rem;margin-top:-4px;min-height:1em}
+.row{display:flex;justify-content:space-between;font-size:.9rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.row.tot{color:var(--fg);font-family:var(--f-display);font-weight:800;font-size:1.3rem;margin-top:4px}
+.dr-foot .btn{justify-content:center;width:100%}
+.btn[disabled]{opacity:.4;pointer-events:none}
+
+/* ---------- Modal ---------- */
+.modal{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:20px var(--gut-r) 20px var(--gut-l);pointer-events:none}
+.modal .box{pointer-events:auto;width:min(980px,100%);max-height:calc(100% - 20px);overflow:auto;background:var(--ink-2);border:1px solid var(--line);border-radius:24px;display:grid;grid-template-columns:1fr 1fr;opacity:0;transform:translateY(30px) scale(.97);transition:opacity .35s,transform .45s cubic-bezier(.2,.8,.2,1);position:relative}
+.modal.on .box{opacity:1;transform:none}
+.modal:not(.on) .box{pointer-events:none}
+.m-media{background:radial-gradient(circle at 50% 40%,#fff,var(--paper) 70%);display:grid;place-items:center;min-height:320px;border-radius:24px 0 0 24px}
+.m-media img{width:82%;max-height:460px;object-fit:contain;mix-blend-mode:multiply}
+.m-info{padding:36px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.m-info h3{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.m-info p{color:var(--muted);margin:0}
+.specs{width:100%;border-collapse:collapse;font-size:.86rem}
+.specs td{padding:9px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.specs td:first-child{color:var(--muted);font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;width:40%;padding-right:12px}
+.m-buy{display:flex;gap:12px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.m-close{position:absolute;top:14px;right:14px;background:rgba(8,11,22,.8)}
+
+/* ---------- Checkout ---------- */
+.co .box{grid-template-columns:1fr}
+.co-in{padding:36px;display:grid;gap:16px}
+.co-in h3{font-size:1.6rem;font-weight:800}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fields .full{grid-column:1/-1}
+.fields label{display:grid;gap:6px;font-size:.78rem;color:var(--muted);font-family:var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+.fields input{background:var(--ink);border:1px solid var(--line);color:var(--fg);padding:13px 14px;border-radius:12px;font:inherit;font-size:.95rem;text-transform:none;letter-spacing:0}
+.fields input:focus{border-color:var(--cobalt);outline:none;box-shadow:0 0 0 3px rgba(61,107,255,.25)}
+.demo-note{font-size:.8rem;color:var(--signal);font-family:var(--f-mono)}
+.success{text-align:center;padding:56px 36px}
+.success .tick{width:84px;height:84px;margin:0 auto 20px;border-radius:50%;background:var(--ok);display:grid;place-items:center;color:#03150E;animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(0)}}
+.success h3{font-size:1.9rem;font-weight:900}
+.success p{color:var(--muted)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:120;width:100%;height:100%}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,calc(100% + 80px));opacity:0;z-index:130;background:var(--fg);color:var(--ink);padding:12px 18px;border-radius:999px;font-weight:700;font-size:.9rem;display:flex;gap:10px;align-items:center;transition:transform .45s cubic-bezier(.2,1.4,.4,1),opacity .3s;max-width:calc(100% - 32px);box-shadow:0 20px 50px -15px rgba(0,0,0,.7)}
+.toast.on{transform:translate(-50%,0);opacity:1}
+.toast img{width:30px;height:30px;border-radius:8px;background:var(--paper);object-fit:contain;mix-blend-mode:multiply}
+
+/* Reveal: visible at rest, gentle lift when JS marks them */
+.rv{transition:transform .8s cubic-bezier(.2,.8,.2,1),opacity .8s}
+.rv.pre{transform:translateY(24px);opacity:.001}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1040px){
+  .grid{grid-template-columns:repeat(3,1fr)}
+  .nums{grid-template-columns:repeat(3,1fr)}
+  .num:nth-child(4){border-left:0}
+  .num:nth-child(n+4){border-top:1px solid var(--line)}
+  .fgrid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:860px){
+  nav.main{display:none}
+  .cart-btn{margin-left:auto}
+  .hero .wrap{grid-template-columns:1fr;padding-block:44px 56px}
+  .showcase{justify-self:center;max-width:420px}
+  .trust .wrap{grid-template-columns:1fr 1fr}
+  .trust div:nth-child(3){border-left:0;padding-left:0}
+  .trust div:nth-child(n+3){border-top:1px solid var(--line)}
+  .bundle{grid-template-columns:1fr;padding:28px}
+  .modal .box{grid-template-columns:1fr}
+  .m-media{border-radius:24px 24px 0 0;min-height:260px}
+  .m-info{padding:24px}
+}
+@media (max-width:640px){
+  section{padding-block:64px}
+  .grid{grid-template-columns:1fr 1fr;gap:12px}
+  .card .body{padding:4px 12px 14px}
+  .card h3{font-size:.9rem}
+  .card .spec{display:none}
+  .price{font-size:1.05rem}
+  .add{width:40px;height:40px}
+  .nums{grid-template-columns:1fr 1fr}
+  .num{border-left:0!important;border-top:1px solid var(--line)}
+  .num:nth-child(even){border-left:1px solid var(--line)!important}
+  .num:nth-child(-n+2){border-top:0}
+  .num:last-child{grid-column:1/-1;border-left:0!important}
+  .tools{margin-left:0;width:100%}
+  .tools select{width:100%}
+  .fields{grid-template-columns:1fr}
+  .fgrid{grid-template-columns:1fr}
+  .cart-btn .lbl{display:none}
+  .price-float{width:76px;height:76px;font-size:.9rem}
+  .tag-float{min-width:0;max-width:78%}
+  .trust div{font-size:.8rem;gap:8px}
+  .co-in{padding:24px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+
+<div class="ticker" aria-hidden="true"><div class="track" id="tickerTrack"></div></div>
+
+<header class="top">
+  <div class="wrap">
+    <a href="#inicio" class="logo" aria-label="1STI, inicio">
+      <span class="logo-mark"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 8h2.5l2-5 3 10 2-5H15" stroke="#E9ECF7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      1STI
+    </a>
+    <nav class="main" aria-label="Principal">
+      <a href="#catalogo">Catálogo</a>
+      <a href="#modulos">Módulos</a>
+      <a href="#pack">Pack completo</a>
+      <a href="#ayuda">Ayuda</a>
+    </nav>
+    <button class="cart-btn" id="openCart" aria-label="Abrir carrito">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+      <span class="lbl">Carrito</span>
+      <span class="cart-count" id="cartCount">0</span>
+    </button>
+  </div>
+</header>
+
+<main id="inicio">
+  <div class="hero">
+    <canvas id="scope" aria-hidden="true"></canvas>
+    <div class="wrap">
+      <div class="hero-copy">
+        <span class="eyebrow">Sistemas de Telecomunicación e Informáticos · Colección 2026</span>
+        <h1>Ocho módulos.<br><span class="grad">Una tienda.</span></h1>
+        <p class="lead">Del teléfono VoIP al arnés de seguridad: <b>el equipo real de cada módulo de 1º STI</b>, elegido pieza a pieza y listo para llegar a tu taller.</p>
+        <div class="cta-row">
+          <a href="#catalogo" class="btn btn-primary">Ver el catálogo
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a href="#pack" class="btn btn-ghost">Pack 8 módulos −15 %</a>
+        </div>
+        <div class="countdown" aria-live="polite">
+          <div class="cd-label"><b id="cdTitle">Black Friday</b><span class="mono" id="cdSub">empieza en</span></div>
+          <div class="cd-cell"><b id="cdD">00</b><small>días</small></div>
+          <div class="cd-cell"><b id="cdH">00</b><small>horas</small></div>
+          <div class="cd-cell"><b id="cdM">00</b><small>min</small></div>
+          <div class="cd-cell"><b id="cdS">00</b><small>seg</small></div>
+        </div>
+      </div>
+      <div class="showcase" id="showcase">
+        <div class="orbit"></div><div class="orbit o2"></div>
+        <div class="stage" id="stage"><img id="stageImg" src="img/telefono.jpg" alt=""></div>
+        <div class="price-float" id="stagePrice">129,90<small>EUROS</small></div>
+        <div class="tag-float"><span class="mono" id="stageMod">MÓDULO 01</span><strong id="stageName">Yealink SIP-T53</strong></div>
+        <div class="dots" id="stageDots" role="tablist" aria-label="Producto destacado"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="trust">
+    <div class="wrap">
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg><span><b>Envío 24/48 h</b>Gratis desde 99 €</span></div>
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span><b>Garantía 3 años</b>En toda la electrónica</span></div>
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg><span><b>30 días</b>Para devolverlo</span></div>
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg><span><b>Soporte técnico</b>De técnicos de STI</span></div>
+    </div>
+  </div>
+
+  <section id="catalogo">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <span class="eyebrow">El catálogo</span>
+          <h2>Un producto por módulo.</h2>
+          <p>Cada pieza responde a un módulo del ciclo. Toca la foto para ver la ficha técnica completa.</p>
+        </div>
+      </div>
+      <div class="filters" id="modulos" role="group" aria-label="Filtrar por módulo">
+        <button class="chip" aria-pressed="true" data-f="all">Todos</button>
+      </div>
+      <div class="filters" style="margin-top:-18px">
+        <div class="tools">
+          <label for="sort" class="mono" style="color:var(--muted)">ORDENAR</label>
+          <select id="sort">
+            <option value="mod">Por módulo</option>
+            <option value="asc">Precio: menor a mayor</option>
+            <option value="desc">Precio: mayor a menor</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </section>
+
+  <div class="band">
+    <div class="wrap">
+      <div class="nums">
+        <div class="num"><b><span data-count="1999">0</span><em>cuentas</em></b><span>Pantalla del medidor LCR, retroiluminada</span></div>
+        <div class="num"><b><span data-count="500">0</span><em>MB/s</em></b><span>Lectura del SSD Kingston A400</span></div>
+        <div class="num"><b><span data-count="2700">0</span><em>K</em></b><span>Luz cálida de la bombilla Araxa E27</span></div>
+        <div class="num"><b><span data-count="40">0</span><em>litros</em></b><span>Cubo de reciclaje Manutan Expert</span></div>
+        <div class="num"><b><span data-count="12">0</span><em>líneas SIP</em></b><span>Cuentas del Yealink SIP-T53</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section id="pack">
+    <div class="wrap">
+      <div class="bundle">
+        <div>
+          <span class="eyebrow">Pack completo 1º STI</span>
+          <h2>Los 8 módulos en una sola caja.</h2>
+          <p>Todo el equipo del curso de una vez: telefonía, digitalización, medida, ICT, redes, hogar digital, sostenibilidad y seguridad. Con un 15 % de descuento sobre el precio por separado.</p>
+          <div class="total"><b id="packPrice">—</b><s id="packOld">—</s><span class="save" id="packSave">−15 %</span></div>
+          <button class="btn btn-primary" id="addPack">Añadir el pack al carrito
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+        <div class="pile" id="pile"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="ayuda">
+  <div class="wrap">
+    <div class="fgrid">
+      <div>
+        <a href="#inicio" class="logo"><span class="logo-mark"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 8h2.5l2-5 3 10 2-5H15" stroke="#E9ECF7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>1STI</a>
+        <p style="max-width:34ch;margin-top:14px">La tienda del primer curso de Sistemas de Telecomunicación e Informáticos. Equipo de verdad para cada módulo.</p>
+      </div>
+      <div>
+        <h4>Tienda</h4>
+        <ul><li><a href="#catalogo">Catálogo</a></li><li><a href="#pack">Pack 8 módulos</a></li><li><a href="#modulos">Por módulo</a></li></ul>
+      </div>
+      <div>
+        <h4>Ayuda</h4>
+        <ul><li>Envíos y entregas</li><li>Devoluciones en 30 días</li><li>Garantía</li><li>Código de prueba: <span class="mono" style="color:var(--fg)">1STI10</span></li></ul>
+      </div>
+      <div>
+        <h4>Novedades</h4>
+        <p style="margin:0 0 10px">Ofertas del Black Friday antes que nadie.</p>
+        <form class="news" id="newsForm"><input id="newsEmail" type="email" placeholder="tu@email.com" aria-label="Correo electrónico" required><button type="submit">Unirme</button></form>
+      </div>
+    </div>
+    <div class="giant" aria-hidden="true">1STI</div>
+    <div class="legal"><span>© 2026 1STI · Tienda de demostración: no se realizan cobros ni envíos reales.</span><span class="mono">Precios con IVA incluido</span></div>
+  </div>
+</footer>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="drawer" aria-label="Carrito" aria-hidden="true">
+  <div class="dr-head"><h3>Tu carrito</h3><button class="x" id="closeCart" aria-label="Cerrar carrito"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="ship" id="ship"></div>
+  <div class="lines" id="lines"></div>
+  <div class="dr-foot">
+    <div class="code"><input id="codeIn" placeholder="Código de descuento" aria-label="Código de descuento"><button id="codeBtn">Aplicar</button></div>
+    <div class="code-msg" id="codeMsg"></div>
+    <div class="row"><span>Subtotal</span><span id="sub">0,00 €</span></div>
+    <div class="row" id="discRow" hidden><span>Descuento</span><span id="disc">0,00 €</span></div>
+    <div class="row"><span>Envío</span><span id="shipCost">—</span></div>
+    <div class="row tot"><span>Total</span><span id="tot">0,00 €</span></div>
+    <button class="btn btn-primary" id="checkout">Finalizar compra</button>
+  </div>
+</aside>
+
+<div class="modal" id="modal" aria-hidden="true"><div class="box" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <button class="x m-close" id="mClose" aria-label="Cerrar ficha"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div class="m-media"><img id="mImg" src="" alt=""></div>
+  <div class="m-info">
+    <span class="mono" id="mMod" style="color:var(--cyan)"></span>
+    <h3 id="mTitle"></h3>
+    <p id="mDesc"></p>
+    <table class="specs"><tbody id="mSpecs"></tbody></table>
+    <div class="m-buy">
+      <div class="price" id="mPrice"></div>
+      <div class="qty"><button id="mMinus" aria-label="Quitar uno">−</button><span id="mQty">1</span><button id="mPlus" aria-label="Añadir uno">+</button></div>
+      <button class="btn btn-primary" id="mAdd">Añadir al carrito</button>
+    </div>
+  </div>
+</div></div>
+
+<div class="modal co" id="co" aria-hidden="true"><div class="box" role="dialog" aria-modal="true" aria-labelledby="coTitle">
+  <button class="x m-close" id="coClose" aria-label="Cerrar pago"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <form class="co-in" id="coForm" novalidate>
+    <span class="eyebrow">Pago seguro · paso 1 de 1</span>
+    <h3 id="coTitle">Datos de envío</h3>
+    <div class="fields">
+      <label>Nombre<input id="fName" value="Lucía Martín" required></label>
+      <label>Teléfono<input id="fPhone" value="600 123 456" required></label>
+      <label class="full">Dirección<input id="fAddr" value="Calle de la Fibra Óptica, 8 · 28001 Madrid" required></label>
+    </div>
+    <p class="demo-note">Tienda de demostración: los datos de ejemplo no se envían a ningún sitio y no se cobra nada.</p>
+    <div class="row tot"><span>Total a pagar</span><span id="coTot"></span></div>
+    <button class="btn btn-primary" type="submit" style="justify-content:center">Confirmar pedido</button>
+  </form>
+  <div class="success" id="coOk" hidden>
+    <div class="tick"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h3>¡Pedido confirmado!</h3>
+    <p>Número de pedido <b class="mono" id="orderNo" style="color:var(--fg);font-size:.95rem"></b><br>Te llegará en 24/48 horas.</p>
+    <button class="btn btn-ghost" id="coDone" style="margin-top:12px">Seguir comprando</button>
+  </div>
+</div></div>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="toast" id="toast" role="status"><img id="toastImg" src="img/telefono.jpg" alt=""><span id="toastTxt"></span></div>
+
+<script>
+(function(){
+"use strict";
+const P=[
+ {id:"telefono",m:1,mod:"Sistemas de telefonía fija y móvil",name:"Yealink SIP-T53 Teléfono VoIP Negro",short:"Yealink SIP-T53",spec:"LCD 3,7\" · 12 cuentas SIP · PoE",price:129.90,old:159.00,badge:"Black Friday",
+  desc:"Teléfono IP de sobremesa para centralitas SIP. Pantalla gráfica retroiluminada, audio HD y doble puerto Gigabit para conectar el PC detrás del teléfono.",
+  specs:[["Pantalla","LCD 3,7\" retroiluminada"],["Cuentas","Hasta 12 cuentas SIP"],["Red","2 puertos Gigabit · PoE"],["Audio","HD Voice · altavoz full-duplex"],["Color","Negro"]]},
+ {id:"libro",m:2,mod:"Digitalización",name:"Big Data: conceptos, tecnologías y aplicaciones",short:"Libro Big Data",spec:"Ríos Insua · Gómez-Ullate · CSIC",price:12.00,
+  desc:"Guía de divulgación de la colección «¿Qué sabemos de?» del CSIC. Explica qué son los grandes datos, cómo se procesan y para qué se usan cada día.",
+  specs:[["Autores","David Ríos Insua y David Gómez-Ullate Oteiza"],["Colección","¿Qué sabemos de? · CSIC"],["Editorial","Los Libros de la Catarata"],["Formato","Tapa blanda"],["Idioma","Español"]]},
+ {id:"medidor",m:3,mod:"Elementos de sistemas",name:"Medidor de impedancia LCR con pantalla de 1999 cuentas",short:"Medidor LCR HP-4070L",spec:"L · C · R · pantalla 1999 cuentas",price:69.00,
+  desc:"Medidor de bobinas, condensadores y resistencias para el banco de pruebas. Pantalla retroiluminada de 1999 cuentas y selector rotativo de rangos.",
+  specs:[["Modelo","HP-4070L"],["Mide","Inductancia (L), capacidad (C), resistencia (R)"],["Pantalla","LCD 1999 cuentas, retroiluminada"],["Extras","Apagado automático · prueba de transistores"],["Pago","3 plazos de 23,00 € sin intereses"]]},
+ {id:"antena",m:4,mod:"ICT · Configuración",name:"Antena TDT Televés DAT BOSS LR 5G UHF",short:"Antena Televés DAT BOSS",spec:"UHF C21-48 · filtro 5G · BOSS",price:64.90,old:74.90,badge:"Top ICT",
+  desc:"Antena UHF para instalaciones de ICT con filtro LTE/5G integrado y tecnología BOSS, que ajusta la ganancia según la señal recibida.",
+  specs:[["Banda","UHF, canales 21 a 48"],["Filtro","LTE / 5G integrado"],["Tecnología","BOSS (ganancia adaptativa)"],["Marca","Televés"],["Uso","Instalaciones de ICT y TDT"]]},
+ {id:"ssd",m:5,mod:"Redes y sistemas informáticos",name:"Kingston A400 240 GB Disco SSD SATA3",short:"SSD Kingston A400 240 GB",spec:"2,5\" SATA3 · 500 MB/s lectura",price:24.99,old:32.99,badge:"Black Friday",
+  desc:"SSD de 2,5 pulgadas para dar una segunda vida a cualquier equipo del aula. Arranque en segundos y sin piezas móviles.",
+  specs:[["Capacidad","240 GB"],["Interfaz","SATA III 6 Gb/s"],["Lectura","Hasta 500 MB/s"],["Escritura","Hasta 350 MB/s"],["Formato","2,5\" · 7 mm"]]},
+ {id:"bombilla",m:6,mod:"Hogar digital",name:"Araxa Bombilla LED E27 9 W AC/DC 2.700 K",short:"Bombilla LED Araxa E27",spec:"9 W · E27 · 2.700 K luz cálida",price:4.95,
+  desc:"Bombilla LED de rosca E27 que funciona tanto en alterna como en continua, ideal para maquetas de domótica alimentadas a baja tensión.",
+  specs:[["Casquillo","E27"],["Potencia","9 W"],["Alimentación","AC / DC"],["Temperatura de color","2.700 K (cálida)"],["Tecnología","LED"]]},
+ {id:"cubo",m:7,mod:"Sostenibilidad",name:"Cubo de basura de reciclaje 40 L Manutan Expert",short:"Cubo reciclaje 40 L",spec:"40 L · negro/gris · reacondicionado",price:277.09,badge:"Reacondicionado",cool:true,
+  desc:"Papelera de recogida selectiva para entornos profesionales. Boca adaptada al tipo de residuo y soporte interior que sujeta la bolsa.",
+  specs:[["Capacidad","40 litros"],["Residuo","Desechos domésticos"],["Color","Cuerpo negro · tapa negra · franja gris"],["Estado","Reacondicionado"],["Referencia","AD50587"]]},
+ {id:"epi",m:8,mod:"Itinerario personal para la empleabilidad",name:"Kit de EPI básico: arnés, elemento de amarre y bolsa",short:"Kit EPI anticaídas",spec:"Arnés · amarre · bolsa",price:85.50,
+  desc:"Equipo de protección individual para trabajos en altura, como subir a un tejado a orientar una antena. Viene listo en su bolsa de transporte.",
+  specs:[["Incluye","Arnés, elemento de amarre y bolsa"],["Uso","Trabajos en altura"],["Envío","Gratis"],["Tipo","EPI anticaídas básico"]]}
+];
+const byId=Object.fromEntries(P.map(p=>[p.id,p]));
+const PACK_OFF=0.15;
+const FREE_SHIP=99, SHIP=4.95;
+const eur=n=>n.toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+const $=s=>document.querySelector(s);
+const mm=n=>"MÓDULO "+String(n).padStart(2,"0");
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- Ticker ---------- */
+const tick=["Black Friday 2026: hasta −25 % en electrónica","Envío gratis desde 99 €","Pack 8 módulos con −15 %","Código 1STI10: 10 % extra","Garantía de 3 años","Devolución en 30 días"];
+$("#tickerTrack").innerHTML=[...tick,...tick].map(t=>"<span>"+t+"</span>").join("");
+
+/* ---------- Store state ---------- */
+let cart={}; let code=null;
+try{const s=JSON.parse(localStorage.getItem("1sti-cart")||"{}"); if(s&&typeof s==="object"){cart=s.items||{};code=s.code||null;}}catch(e){}
+const save=()=>{try{localStorage.setItem("1sti-cart",JSON.stringify({items:cart,code}))}catch(e){}};
+
+/* ---------- Catalog ---------- */
+let filter="all", sort="mod";
+const chips=$("#modulos");
+P.forEach(p=>{const b=document.createElement("button");b.className="chip";b.dataset.f=p.m;b.setAttribute("aria-pressed","false");b.innerHTML='<span class="n">M'+p.m+'</span>'+p.mod.split(" · ")[0];chips.appendChild(b);});
+chips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;filter=b.dataset.f;chips.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));render();});
+$("#sort").addEventListener("change",e=>{sort=e.target.value;render();});
+
+function card(p){
+  const off=p.old?Math.round((1-p.price/p.old)*100):0;
+  return '<article class="card rv" data-id="'+p.id+'">'+
+   '<div class="media" data-q="'+p.id+'" role="button" tabindex="0" aria-label="Ver ficha de '+p.short+'"><img src="img/'+p.id+'.jpg" alt="'+p.name+'" loading="lazy"><div class="glare"></div>'+
+   '<span class="mod">M'+String(p.m).padStart(2,"0")+'</span>'+
+   (p.badge?'<span class="badge'+(p.cool?' cool':'')+'">'+(off?'−'+off+' %':p.badge)+'</span>':'')+'</div>'+
+   '<div class="body"><span class="mono cat">'+p.mod+'</span><h3>'+p.name+'</h3><span class="mono spec">'+p.spec+'</span>'+
+   '<div class="foot"><div class="price">'+(p.old?'<s>'+eur(p.old)+'</s>':'')+eur(p.price)+'</div>'+
+   '<button class="add" data-add="'+p.id+'" aria-label="Añadir '+p.short+' al carrito"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div></div></article>';
+}
+function render(){
+  let list=P.filter(p=>filter==="all"||String(p.m)===String(filter));
+  if(sort==="asc")list=[...list].sort((a,b)=>a.price-b.price);
+  if(sort==="desc")list=[...list].sort((a,b)=>b.price-a.price);
+  $("#grid").innerHTML=list.length?list.map(card).join(""):'<p class="empty">No hay productos en este módulo.</p>';
+  bindTilt();
+}
+const grid=$("#grid");
+grid.addEventListener("click",e=>{
+  const a=e.target.closest("[data-add]"); if(a){add(a.dataset.add,1,a);return;}
+  const q=e.target.closest("[data-q]"); if(q)openModal(q.dataset.q);
+});
+grid.addEventListener("keydown",e=>{const q=e.target.closest("[data-q]");if(q&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openModal(q.dataset.q);}});
+
+function bindTilt(){
+  if(reduce||!matchMedia("(hover:hover)").matches)return;
+  grid.querySelectorAll(".card").forEach(c=>{
+    c.addEventListener("pointermove",e=>{const r=c.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+      c.style.transform="perspective(900px) rotateX("+((.5-y)*9)+"deg) rotateY("+((x-.5)*11)+"deg) translateY(-6px)";
+      c.style.setProperty("--gx",x*100+"%");c.style.setProperty("--gy",y*100+"%");});
+    c.addEventListener("pointerleave",()=>{c.style.transform="";});
+  });
+}
+render();
+
+/* ---------- Cart ---------- */
+function add(id,q,btn){
+  cart[id]=(cart[id]||0)+q; save(); paint();
+  const cb=$("#openCart"); cb.classList.remove("bump"); void cb.offsetWidth; cb.classList.add("bump");
+  if(btn&&btn.classList.contains("add")){btn.classList.add("done");btn.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    setTimeout(()=>{btn.classList.remove("done");btn.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';},1300);
+    fly(btn,id);}
+  toast(id, (q>1?q+" × ":"")+byId[id].short+" añadido");
+}
+function fly(from,id){
+  if(reduce)return;
+  const a=from.getBoundingClientRect(),b=$("#openCart").getBoundingClientRect();
+  const im=document.createElement("img");im.src="img/"+id+".jpg";
+  Object.assign(im.style,{position:"fixed",left:a.left+"px",top:a.top+"px",width:"46px",height:"46px",borderRadius:"50%",objectFit:"contain",background:"#EEF1F8",zIndex:140,pointerEvents:"none",transition:"all .8s cubic-bezier(.5,-.3,.6,1)",boxShadow:"0 10px 30px rgba(0,0,0,.5)"});
+  document.body.appendChild(im);
+  requestAnimationFrame(()=>{Object.assign(im.style,{left:(b.left+b.width/2-12)+"px",top:(b.top+4)+"px",width:"24px",height:"24px",opacity:".3"});});
+  setTimeout(()=>im.remove(),850);
+}
+let tt;
+function toast(id,txt){ $("#toastImg").src="img/"+id+".jpg"; $("#toastTxt").textContent=txt; const t=$("#toast"); t.classList.add("on"); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove("on"),2200); }
+
+const CODES={"1STI10":.10,"BLACKFRIDAY":.20};
+function totals(){
+  let sub=0,n=0; for(const[id,q]of Object.entries(cart)){if(id==="pack"){sub+=packPrice()*q;n+=q;}else if(byId[id]){sub+=byId[id].price*q;n+=q;}}
+  const disc=code&&CODES[code]?sub*CODES[code]:0;
+  const after=sub-disc; const ship=n===0?0:(after>=FREE_SHIP?0:SHIP);
+  return {sub,disc,ship,tot:after+ship,n};
+}
+function paint(){
+  const t=totals();
+  $("#cartCount").textContent=t.n;
+  const L=$("#lines");
+  if(!t.n){L.innerHTML='<div class="dr-empty"><b>Tu carrito está vacío</b>Añade el equipo de cualquier módulo y aparecerá aquí.</div>';}
+  else L.innerHTML=Object.entries(cart).map(([id,q])=>{
+    const isPack=id==="pack"; const p=isPack?{short:"Pack completo 8 módulos",price:packPrice(),id:"medidor"}:byId[id]; if(!p)return"";
+    return '<div class="line"><div class="th"><img src="img/'+(isPack?"telefono":id)+'.jpg" alt=""></div><div><h5>'+p.short+'</h5><span class="mono" style="color:var(--muted)">'+eur(p.price)+' / ud.</span><br>'+
+      '<div class="qty"><button data-dec="'+id+'" aria-label="Quitar uno">−</button><span>'+q+'</span><button data-inc="'+id+'" aria-label="Añadir uno">+</button></div></div>'+
+      '<div><div class="lp">'+eur(p.price*q)+'</div><button class="rm" data-rm="'+id+'">Quitar</button></div></div>';
+  }).join("");
+  const left=Math.max(0,FREE_SHIP-(t.sub-t.disc));
+  $("#ship").innerHTML=t.n?(left>0?'Te faltan <b>'+eur(left)+'</b> para el envío gratis':'<b>Envío gratis</b> desbloqueado')+'<div class="bar"><i style="width:'+Math.min(100,(t.sub-t.disc)/FREE_SHIP*100)+'%"></i></div>':'Envío gratis en pedidos desde <b>99 €</b>';
+  $("#sub").textContent=eur(t.sub);
+  $("#discRow").hidden=!t.disc; $("#disc").textContent="−"+eur(t.disc);
+  $("#shipCost").textContent=t.n?(t.ship?eur(t.ship):"Gratis"):"—";
+  $("#tot").textContent=eur(t.tot);
+  $("#checkout").disabled=!t.n;
+  if(code&&CODES[code]){$("#codeMsg").innerHTML='<span style="color:var(--ok)">Código '+code+' aplicado: −'+Math.round(CODES[code]*100)+' %</span>';}
+}
+$("#lines").addEventListener("click",e=>{
+  const i=e.target.closest("[data-inc]"),d=e.target.closest("[data-dec]"),r=e.target.closest("[data-rm]");
+  if(i)cart[i.dataset.inc]++;
+  if(d){const k=d.dataset.dec;cart[k]--;if(cart[k]<=0)delete cart[k];}
+  if(r)delete cart[r.dataset.rm];
+  save();paint();
+});
+$("#codeBtn").addEventListener("click",()=>{
+  const v=$("#codeIn").value.trim().toUpperCase();
+  if(CODES[v]){code=v;save();paint();}
+  else{$("#codeMsg").innerHTML='<span style="color:var(--signal)">Ese código no existe. Prueba con 1STI10.</span>';}
+});
+$("#codeIn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#codeBtn").click();});
+
+const drawer=$("#drawer"),scrim=$("#scrim");
+let lastFocus=null;
+function openCart(){lastFocus=document.activeElement;drawer.classList.add("on");scrim.classList.add("on");drawer.setAttribute("aria-hidden","false");$("#closeCart").focus();}
+function closeAll(){drawer.classList.remove("on");drawer.setAttribute("aria-hidden","true");["#modal","#co"].forEach(s=>{$(s).classList.remove("on");$(s).setAttribute("aria-hidden","true");});scrim.classList.remove("on");if(lastFocus&&lastFocus.focus)lastFocus.focus();}
+$("#openCart").addEventListener("click",openCart);
+$("#closeCart").addEventListener("click",closeAll);
+scrim.addEventListener("click",closeAll);
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll();});
+
+/* ---------- Modal ---------- */
+let mId=null,mQ=1;
+function openModal(id){
+  const p=byId[id]; mId=id; mQ=1; lastFocus=document.activeElement;
+  $("#mImg").src="img/"+id+".jpg"; $("#mImg").alt=p.name;
+  $("#mMod").textContent=mm(p.m)+" · "+p.mod.toUpperCase();
+  $("#mTitle").textContent=p.name; $("#mDesc").textContent=p.desc;
+  $("#mSpecs").innerHTML=p.specs.map(s=>"<tr><td>"+s[0]+"</td><td>"+s[1]+"</td></tr>").join("");
+  $("#mQty").textContent=1;
+  $("#mPrice").innerHTML=(p.old?"<s>"+eur(p.old)+"</s>":"")+eur(p.price);
+  $("#modal").classList.add("on"); $("#modal").setAttribute("aria-hidden","false"); scrim.classList.add("on"); $("#mClose").focus();
+}
+$("#mClose").addEventListener("click",closeAll);
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeAll();});
+$("#mPlus").addEventListener("click",()=>{mQ=Math.min(99,mQ+1);$("#mQty").textContent=mQ;});
+$("#mMinus").addEventListener("click",()=>{mQ=Math.max(1,mQ-1);$("#mQty").textContent=mQ;});
+$("#mAdd").addEventListener("click",()=>{add(mId,mQ);closeAll();setTimeout(openCart,250);});
+
+/* ---------- Pack ---------- */
+const full=P.reduce((s,p)=>s+p.price,0);
+function packPrice(){return Math.round(full*(1-PACK_OFF)*100)/100;}
+$("#packPrice").textContent=eur(packPrice()); $("#packOld").textContent=eur(full);
+$("#packSave").textContent="Ahorras "+eur(full-packPrice());
+$("#pile").innerHTML=P.map(p=>'<div><img src="img/'+p.id+'.jpg" alt="'+p.short+'" loading="lazy"></div>').join("");
+$("#addPack").addEventListener("click",e=>{cart.pack=(cart.pack||0)+1;save();paint();toast("telefono","Pack completo añadido");setTimeout(openCart,300);});
+
+/* ---------- Checkout ---------- */
+$("#checkout").addEventListener("click",()=>{
+  drawer.classList.remove("on"); $("#coTot").textContent=eur(totals().tot);
+  $("#coForm").hidden=false; $("#coOk").hidden=true;
+  $("#co").classList.add("on"); $("#co").setAttribute("aria-hidden","false"); scrim.classList.add("on");
+  setTimeout(()=>$("#fName").focus(),100);
+});
+$("#coClose").addEventListener("click",closeAll);
+$("#coForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const bad=["#fName","#fPhone","#fAddr"].find(s=>!$(s).value.trim());
+  if(bad){$(bad).focus();$(bad).style.borderColor="var(--signal)";return;}
+  $("#orderNo").textContent="1STI-"+new Date().getFullYear()+"-"+Math.floor(100000+Math.random()*899999);
+  $("#coForm").hidden=true; $("#coOk").hidden=false;
+  cart={}; code=null; $("#codeMsg").textContent=""; $("#codeIn").value=""; save(); paint(); confetti();
+});
+$("#coDone").addEventListener("click",closeAll);
+$("#newsForm").addEventListener("submit",e=>{e.preventDefault();const v=$("#newsEmail").value;if(!/^\S+@\S+\.\S+$/.test(v)){$("#newsEmail").focus();return;}$("#newsEmail").value="";toast("libro","Apuntado. Te avisaremos del Black Friday");});
+
+/* ---------- Confetti ---------- */
+function confetti(){
+  if(reduce)return;
+  const c=$("#confetti"),x=c.getContext("2d"); const dpr=Math.min(2,devicePixelRatio||1);
+  c.width=innerWidth*dpr;c.height=innerHeight*dpr;x.scale(dpr,dpr);
+  const cols=["#3D6BFF","#3FE0FF","#FF8A1F","#35D49A","#E9ECF7"];
+  const ps=Array.from({length:180},()=>({x:innerWidth/2,y:innerHeight/2,vx:(Math.random()-.5)*16,vy:-Math.random()*16-4,r:Math.random()*6+3,c:cols[Math.random()*5|0],a:Math.random()*6,va:(Math.random()-.5)*.3}));
+  let f=0;(function loop(){x.clearRect(0,0,innerWidth,innerHeight);ps.forEach(p=>{p.vy+=.35;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.a+=p.va;x.save();x.translate(p.x,p.y);x.rotate(p.a);x.fillStyle=p.c;x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);x.restore();});if(++f<200)requestAnimationFrame(loop);else x.clearRect(0,0,innerWidth,innerHeight);})();
+}
+
+/* ---------- Hero showcase ---------- */
+const feat=["telefono","antena","medidor","ssd","epi","bombilla","libro","cubo"];
+let fi=0, ft;
+const dots=$("#stageDots");
+feat.forEach((id,i)=>{const b=document.createElement("button");b.setAttribute("role","tab");b.setAttribute("aria-label",byId[id].short);b.addEventListener("click",()=>{show(i);restart();});dots.appendChild(b);});
+function show(i){
+  fi=i; const p=byId[feat[i]], img=$("#stageImg");
+  img.classList.add("out");
+  setTimeout(()=>{img.src="img/"+p.id+".jpg";img.alt=p.name;img.classList.remove("out");},reduce?0:320);
+  $("#stageMod").textContent=mm(p.m)+" · "+p.mod.split(" · ")[0].toUpperCase();
+  $("#stageName").textContent=p.short;
+  $("#stagePrice").innerHTML=eur(p.price).replace(" €","")+"<small>EUROS</small>";
+  dots.querySelectorAll("button").forEach((b,j)=>{b.classList.toggle("on",j===i);b.setAttribute("aria-selected",String(j===i));});
+}
+function restart(){clearInterval(ft);if(!reduce)ft=setInterval(()=>show((fi+1)%feat.length),3600);}
+show(0);restart();
+$("#stage").addEventListener("click",()=>openModal(feat[fi]));
+$("#stage").style.cursor="zoom-in";
+const sc=$("#showcase");
+if(!reduce&&matchMedia("(hover:hover)").matches){
+  sc.addEventListener("pointermove",e=>{const r=sc.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;$("#stage").style.transform="perspective(800px) rotateY("+x*14+"deg) rotateX("+(-y*14)+"deg)";});
+  sc.addEventListener("pointerleave",()=>{$("#stage").style.transform="";});
+}
+
+/* ---------- Oscilloscope background ---------- */
+(function(){
+  const c=$("#scope"),x=c.getContext("2d"); let w,h,dpr,mx=.7,my=.5,t=0;
+  function size(){dpr=Math.min(2,devicePixelRatio||1);w=c.clientWidth;h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;x.setTransform(dpr,0,0,dpr,0,0);}
+  size(); addEventListener("resize",size);
+  c.parentElement.addEventListener("pointermove",e=>{const r=c.getBoundingClientRect();mx=(e.clientX-r.left)/r.width;my=(e.clientY-r.top)/r.height;});
+  const waves=[{c:"61,107,255",a:.55,f:1.4,s:.9},{c:"63,224,255",a:.35,f:2.3,s:1.3},{c:"255,138,31",a:.28,f:.8,s:.6},{c:"233,236,247",a:.12,f:3.1,s:1.8}];
+  function grid(){x.strokeStyle="rgba(233,236,247,.045)";x.lineWidth=1;const g=48;x.beginPath();for(let i=0;i<w;i+=g){x.moveTo(i+.5,0);x.lineTo(i+.5,h);}for(let j=0;j<h;j+=g){x.moveTo(0,j+.5);x.lineTo(w,j+.5);}x.stroke();}
+  function frame(){
+    x.clearRect(0,0,w,h); grid();
+    waves.forEach((wv,k)=>{
+      x.beginPath(); x.lineWidth=k===0?2:1.3; x.strokeStyle="rgba("+wv.c+","+wv.a+")";
+      x.shadowColor="rgba("+wv.c+",.8)"; x.shadowBlur=k===0?14:6;
+      const base=h*(.55+k*.06), amp=h*(.06+.08*(1-Math.abs(my-.5)))*(1-k*.15);
+      for(let i=0;i<=w;i+=4){const u=i/w; const env=Math.exp(-Math.pow((u-mx)*2.4,2));
+        const y=base+Math.sin(u*Math.PI*2*wv.f*3+t*wv.s+k)*amp*(.35+env)+Math.sin(u*40+t*3)*env*4;
+        i?x.lineTo(i,y):x.moveTo(i,y);}
+      x.stroke();
+    });
+    x.shadowBlur=0; t+=.02; if(!reduce)requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+/* ---------- Countdown: Black Friday 27-11-2026 → Cyber Monday 30-11-2026 ---------- */
+const BF=new Date(2026,10,27,0,0,0), CM=new Date(2026,11,1,0,0,0);
+function cd(){
+  const now=new Date(); let target=BF, title="Black Friday", sub="empieza en";
+  if(now>=BF&&now<CM){target=CM;title="Black Friday";sub="termina en";}
+  else if(now>=CM){title="Ofertas";sub="hasta fin de stock";target=now;}
+  const d=Math.max(0,target-now), z=n=>String(n).padStart(2,"0");
+  $("#cdTitle").textContent=title;$("#cdSub").textContent=sub;
+  $("#cdD").textContent=z(Math.floor(d/864e5));$("#cdH").textContent=z(Math.floor(d/36e5)%24);
+  $("#cdM").textContent=z(Math.floor(d/6e4)%60);$("#cdS").textContent=z(Math.floor(d/1e3)%60);
+}
+cd(); setInterval(cd,1000);
+
+/* ---------- Counters + reveal ---------- */
+const counted=new WeakSet();
+function countUp(el){if(counted.has(el))return;counted.add(el);const end=+el.dataset.count;if(reduce){el.textContent=end.toLocaleString("es-ES");return;}const t0=performance.now();(function s(n){const k=Math.min(1,(n-t0)/1400),e=1-Math.pow(1-k,4);el.textContent=Math.round(end*e).toLocaleString("es-ES");if(k<1)requestAnimationFrame(s);})(t0);}
+document.querySelectorAll("[data-count]").forEach(el=>el.textContent=(+el.dataset.count).toLocaleString("es-ES"));
+if("IntersectionObserver" in window&&!reduce){
+  const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){counted.delete(en.target);countUp(en.target);io.unobserve(en.target);}}),{threshold:.6});
+  document.querySelectorAll("[data-count]").forEach(el=>io.observe(el));
+}
+
+paint();
+})();
+</script>
